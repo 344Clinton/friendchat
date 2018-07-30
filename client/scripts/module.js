@@ -601,10 +601,6 @@ library.module = library.module || {};
 	
 	ns.Presence.prototype.init = function() {
 		const self = this;
-		/* UHEUHEUHEE
-		if ( !self.module.settings.identity )
-			self.module.settings.identity
-		*/
 		
 		// server
 		self.messageMap[ 'initialize' ] = initialize;
@@ -669,8 +665,9 @@ library.module = library.module || {};
 		console.log( 'Presence.initialize - NYI', state );
 	}
 	
-	ns.Presence.prototype.handleInitialize = function() {
+	ns.Presence.prototype.handleInitialize = function( e ) {
 		const self = this;
+		console.log( 'handleInitialize', e );
 		self.sendInit();
 	}
 	
