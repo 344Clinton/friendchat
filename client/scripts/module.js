@@ -693,7 +693,7 @@ library.module = library.module || {};
 	ns.Presence.prototype.clear = function() {
 		const self = this;
 		self.cleanContacts();
-		self.accountId = null
+		self.accountId = null;
 		
 	}
 	

@@ -45,6 +45,7 @@ ns.Presence = function( clientConn, clientId ) {
 	self.authBundle = null;
 	self.identity = null;
 	self.account = null;
+	self.contacts = [];
 	
 	self.init();
 }
@@ -383,23 +384,45 @@ ns.Presence.prototype.tryLogin = function() {
 ns.Presence.prototype.handleInitialize = function( state ) {
 	var self = this;
 	// account
+	log( 'handleInitialize', state );
 	let accId = state.account.clientId;
 	if ( !self.account )
 		bindServerConn( accId )
 		
 	self.account = state.account;
+	self.contacts = state.contacts || [];
 	self.client.setState( 'online', Date.now() );
 	self.updateClientAccount();
 	
-	// rooms
+	self.initializeRooms( state.rooms );
+	self.initializeContacts( state.contacts );
 	
+	function bindServerConn( accId ) {
+		self.client.on( accId, toAccount );
+		self.server.on( 'join', joined );
+		self.server.on( 'close', closed );
+		self.server.on( 'contact-list', contactList );
+		self.server.on( 'contact-add', contactAdd );
+		self.server.on( 'contact-remove', contactRemove );
+		
+		function toAccount( e ) { self.server.send( e ); }
+		function joined( e ) { self.handleJoinedRoom( e ); }
+		function closed( e ) { self.handleRoomClosed( e ); }
+		function contactList( e ) { self.handleContactList( e ); }
+		function contactAdd( e ) { self.handleContactAdd( e ); }
+		function contactRemove( e ) { self.handleContactRemove( e ); }
+	}
+}
+
+ns.Presence.prototype.initializeRooms = function( rooms ) {
+	const self = this;
 	// check if we lost any
 	let currRooms = Object.keys( self.rooms );
 	let left = currRooms.filter( notInState );
 	left.forEach( remove );
 	
 	function notInState( rid ) {
-		let found = state.rooms.indexOf( rid );
+		let found = rooms.indexOf( rid );
 		if ( -1 === found )
 			return true;
 		else
@@ -409,21 +432,7 @@ ns.Presence.prototype.handleInitialize = function( state ) {
 	function remove( rid ) { self.handleRoomClosed( rid ); }
 	
 	// join new
-	state.rooms
-		.forEach( add );
-		
-	function add( e ) { self.handleJoinedRoom( e ); }
-	
-	//
-	function bindServerConn( accId ) {
-		self.client.on( accId, toAccount );
-		self.server.on( 'join', joined );
-		self.server.on( 'close', closed );
-		
-		function toAccount( e ) { self.server.send( e ); }
-		function joined( e ) { self.handleJoinedRoom( e ); }
-		function closed( e ) { self.handleRoomClosed( e ); }
-	}
+	rooms.forEach( room => self.handleJoinedRoom( room ));
 }
 
 // room things
@@ -506,6 +515,47 @@ ns.Presence.prototype.handleRoomClosed = function( roomId ) {
 		data : roomId,
 	};
 	self.client.send( closed );
+}
+
+// contact stuff
+
+ns.Presence.prototype.initializeContacts = function( contacts ) {
+	const self = this;
+	log( 'initializeContacts', contacts );
+	self.contacts = contacts;
+}
+
+ns.Presence.prototype.handleContactList = function( list ) {
+	const self = this;
+	log( 'handleContactList', list );
+	self.contacts = list;
+	const cList = {
+		type : 'contact-list',
+		data : list,
+	};
+	self.client.send( cList );
+}
+
+ns.Presence.prototype.handleContactAdd = function( identity ) {
+	const self = this;
+	log( 'handleContactAdd', identity );
+	self.contacts.push( identity );
+	const cAdd = {
+		type : 'contact-add',
+		data : identity,
+	};
+	self.client.send( cAdd );
+}
+
+ns.Presence.prototype.handleContactRemove = function( clientId ) {
+	const self = this;
+	log( 'handleContactRemove', clientId );
+	self.contacts = self.contacts.filter( id => id !== clientId );
+	const cRemove = {
+		type : 'contact-remove',
+		data : clientId,
+	};
+	self.client.send( cRemove );
 }
 
 // conf updates
