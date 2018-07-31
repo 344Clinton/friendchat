@@ -276,10 +276,7 @@ library.view = library.view || {};
 // TREEROOT module
 (function( ns, undefined ) {
 	ns.Treeroot = function( conf ) {
-		if ( !( this instanceof ns.Treeroot ))
-			return new ns.Treeroot( conf );
-		
-		var self = this;
+		const self = this;
 		self.activeId = friendUP.tool.uid( 'active' );
 		self.inactiveFolditId = friendUP.tool.uid( 'inactiveFoldit' );
 		self.inactiveId = friendUP.tool.uid( 'inactive' );
@@ -983,28 +980,7 @@ library.view = library.view || {};
 		];
 		return opts;
 	}
-	 /*
-	ns.IrcChannel.prototype.handleAction = function( selected ) {
-		const self = this;
-		console.log( 'IrcChannel.handleAction', selected );
-	}
-	*/
-	
-	ns.IrcChannel.prototype.onDoubleClick = function() {
-		var self = this;
-		self.toggleChat();
-	}
-	
-	ns.IrcChannel.prototype.toggleChat = function( e ) {
-		var self = this;
-		self.send({ type : 'channel' });
-	}
-	
-	ns.IrcChannel.prototype.leaveChat = function( e ) {
-		var self = this;
-		self.send({ type : 'leave' });
-	}
-	
+
 })( library.view );
 
 // IRC PRIVATE
@@ -1095,12 +1071,9 @@ library.view = library.view || {};
 // IRC
 (function( ns, undefined ) {
 	ns.IRC = function( conf ) {
-		if ( !( this instanceof ns.IRC ))
-			return new ns.IRC( conf );
+		const self = this;
+		library.view.BaseModule.call( self, conf );
 		
-		library.view.BaseModule.call( this, conf );
-		
-		var self = this;
 		self.init();
 	}
 	
@@ -1830,6 +1803,28 @@ library.view = library.view || {};
 	
 })( library.view );
 
+// TElegram
+(function( ns, undefined ) {
+	ns.Telegram = function( conf ) {
+		if ( !( this instanceof ns.Telegram ))
+			return new ns.Telegram( conf );
+		
+		var self = this;
+		library.view.BaseModule.call( self, conf );
+		
+		self.init();
+	}
+	
+	// Public
+	
+	// Private
+	
+	ns.Telegram.prototype.init = function() {
+		const self = this;
+	}
+	
+})( library.view );
+
 
 // ACCONT
 (function( ns, undefined ) {
@@ -1920,6 +1915,7 @@ library.view = library.view || {};
 			treeroot : library.view.Treeroot,
 			irc      : library.view.IRC,
 			presence : library.view.Presence,
+			telegram : library.view.Telegram,
 		};
 		
 		self.guide = new library.component.InfoBox({

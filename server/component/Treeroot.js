@@ -665,7 +665,8 @@ ns.Treeroot.prototype.toClientContact = function( msg, clientId, socketId ) {
 		type : clientId,
 		data : msg,
 	};
-	self.client.send( msg, socketId, clientId );
+	self.toClient( wrap, socketId );
+	//self.client.send( msg, socketId, clientId );
 }
 
 ns.Treeroot.prototype.toContactHandler = function( clientId, msg, socketId ) {

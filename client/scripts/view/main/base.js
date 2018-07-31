@@ -247,6 +247,13 @@ library.view = library.view || {};
 	
 	// Public
 	
+	// Must be implemented by each module
+	
+	ns.BaseModule.prototype.getMenuOptions = function() {
+		const self = this;
+		return [];
+	}
+	
 	// Private
 	
 	ns.BaseModule.prototype.initBaseModule = function() {
