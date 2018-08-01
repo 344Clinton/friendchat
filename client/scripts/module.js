@@ -772,6 +772,7 @@ library.module = library.module || {};
 	
 	ns.Presence.prototype.handleAccount = function( account ) {
 		const self = this;
+		console.log( 'handleAccount - SO MANY TODOS???', account );
 		self.account = account;
 		self.accountId = account.clientId;
 		if ( account.name !== self.identity.name )
@@ -1861,6 +1862,7 @@ library.module = library.module || {};
 	
 	ns.Treeroot.prototype.subscription = function( data ) {
 		const self = this;
+		console.log( 'subscription', data );
 		if ( 'add' === data.type ) {
 			self.addSubscription( data.data );
 			return;
@@ -1894,9 +1896,9 @@ library.module = library.module || {};
 		
 		var conf = {
 			moduleId   : self.clientId,
-			parentConn : self.conn,
 			parentView : self.parentView,
 			subscriber : subscription,
+			subscribe  : subscribe,
 		};
 		
 		var subObj = new library.contact.Subscriber( conf );
@@ -1908,6 +1910,13 @@ library.module = library.module || {};
 		});
 		
 		hello.log.positive( 'Contact request: ' + ( subscription.displayName || subscription.clientId ));
+		function subscribe( event ) {
+			const sub = {
+				type : 'subscription',
+				data : event,
+			};
+			self.conn.send( sub );
+		}
 	}
 	
 	ns.Treeroot.prototype.removeSubscription = ns.Treeroot.prototype.removeContact;
@@ -1986,9 +1995,11 @@ library.module = library.module || {};
 				type : 'subscription',
 				data : {
 					type   : 'subscribe',
-					idType : data.type,
-					id     : data.id,
-					reqId  : reqId,
+					data : {
+						idType : data.type,
+						id     : data.id,
+						reqId  : reqId,
+					},
 				},
 			});
 			self.requests[ reqId ] = subConfirm;
@@ -2013,6 +2024,7 @@ library.module = library.module || {};
 	
 	ns.Treeroot.prototype.confirmSubscription = function( event ) {
 		const self = this;
+		console.log( 'confirmsubscription', event );
 		const reqId = event.reqId;
 		if ( !reqId )
 			return;
@@ -2719,7 +2731,7 @@ library.module = library.module || {};
 			if ( !contact )
 				return;
 			
-			contact.receiveMsg( msg );
+			contact.handleEvent( msg );
 		}
 	}
 	

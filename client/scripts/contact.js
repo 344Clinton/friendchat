@@ -48,6 +48,33 @@ library.contact = library.contact || {};
 	ns.Contact.prototype.contactInit = function( parentConn, parentView ) {
 		var self = this;
 		console.log( 'contactInit', self.clientId );
+		if ( parentConn )
+			self.setupConn( parentConn );
+		
+		self.interceptTypes = {
+			'live-invite'    : Application.i18n( 'i18n_live_invite' ),
+			'calendar-event' : Application.i18n( 'i18n_calendar_event' ),
+		};
+		
+		self.interceptMap = {
+			'live-invite'    : startLive,
+			'calendar-event' : addCalendarEvent,
+		};
+		
+		function startLive( event, from, msg ) { self.startLive( event, from, msg ); }
+		function addCalendarEvent( event, from ) { self.addCalendarEvent( event, from ); }
+		
+		
+		self.view = new library.component.SubView({
+			parent : parentView,
+			type : self.clientId,
+		});
+		
+		self.setIdentity(); // must be implemented by every module, see reference
+	}
+	
+	ns.Contact.prototype.setupConn = function( parentConn ) {
+		const self = this;
 		self.conn = new library.component.EventNode(
 			self.clientId,
 			parentConn,
@@ -69,30 +96,8 @@ library.contact = library.contact || {};
 		function message( msg ) { self.doMessageIntercept( msg ); }
 		function notification( msg ) { self.handleNotification( msg ); }
 		function updateViewTheme( msg ) { self.updateViewTheme( msg ); }
-		
-		self.interceptTypes = {
-			'live-invite'    : Application.i18n( 'i18n_live_invite' ),
-			'calendar-event' : Application.i18n( 'i18n_calendar_event' ),
-		};
-		
-		self.interceptMap = {
-			'live-invite'    : startLive,
-			'calendar-event' : addCalendarEvent,
-		};
-		
-		function startLive( event, from, msg ) { self.startLive( event, from, msg ); }
-		function addCalendarEvent( event, from ) { self.addCalendarEvent( event, from ); }
-		
-		
-		self.view = new library.component.SubView({
-			parent : parentView,
-			type : self.clientId,
-		});
-		
-		self.setIdentity(); // must be implemented by every extension, see reference
 	}
 	
-	// Reference only
 	ns.Contact.prototype.setIdentity = function() {
 		var self = this;
 		self.identity = {
@@ -100,6 +105,14 @@ library.contact = library.contact || {};
 			name : null,
 			avatar : null,
 		};
+	}
+	
+	ns.Contact.prototype.handleEvent = function( event ) {
+		const self = this;
+		if ( !self.conn )
+			return;
+		
+		self.conn.handle( event );
 	}
 	
 	ns.Contact.prototype.doMessageIntercept = function( data ) {
@@ -479,8 +492,12 @@ library.contact = library.contact || {};
 	
 	ns.Contact.prototype.contactClose = function() {
 		var self = this;
-		self.conn.close();
-		self.view.close();
+		if ( self.conn )
+			self.conn.close();
+		
+		if ( self.view )
+			self.view.close();
+		
 		if ( self.chatView )
 			self.chatView.close();
 	}
@@ -1533,6 +1550,7 @@ library.contact = library.contact || {};
 		
 		var self = this;
 		self.data = conf.subscriber;
+		self.subscribe = conf.subscribe;
 		
 		library.contact.Contact.call( self, conf );
 		self.init();
@@ -1566,36 +1584,35 @@ library.contact = library.contact || {};
 	}
 	
 	ns.Subscriber.prototype.allow = function() {
-		var self = this;
-		self.conn.send({
-			type : 'subscription',
-			data : {
-				type : 'allow',
-				clientId : self.clientId
-			}
+		const self = this;
+		console.log( 'Subscriber.allow', self.subscriber );
+		self.subscribe({
+			type : 'allow',
+			data : self.clientId,
 		});
 	}
 	
 	ns.Subscriber.prototype.deny = function() {
-		var self = this;
-		self.conn.send({
-			type : 'subscription',
-			data : {
-				type : 'deny',
-				clientId : self.clientId
-			}
+		const self = this;
+		self.subscribe({
+			type : 'deny',
+			data : self.clientId,
 		});
 	}
 	
 	ns.Subscriber.prototype.cancel = function() {
-		var self = this;
-		self.conn.send({
-			type : 'subscription',
-			data : {
-				type : 'cancel',
-				clientId : self.clientId
-			}
+		const self = this;
+		self.subscribe({
+			type : 'cancel',
+			data : self.clientId,
 		});
+	}
+	
+	ns.Subscriber.prototype.close = function() {
+		const self = this;
+		console.log( 'subscriber.close' );
+		delete self.subscribe;
+		self.contactClose();
 	}
 	
 })( library.contact );
@@ -1631,7 +1648,7 @@ library.contact = library.contact || {};
 			type : 'subscription',
 			data : {
 				type : 'unsubscribe',
-				clientId : self.clientId,
+				data : self.clientId,
 			},
 		});
 	}
