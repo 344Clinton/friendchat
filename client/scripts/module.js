@@ -802,6 +802,9 @@ library.module = library.module || {};
 	ns.Presence.prototype.handleContactList = function( list ) {
 		const self = this;
 		console.log( 'presence.handleContactList', list );
+		if ( !list || !list.length )
+			return;
+		
 		self.contactList = list;
 		const cList = {
 			type : 'contact-list',
