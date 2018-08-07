@@ -196,10 +196,18 @@ var hello = window.hello || {};
 	
 	ns.ModuleControl.prototype.getContainerId = function( moduleType ) {
 		const self = this;
-		if ( 'presence' === moduleType )
-			return 'conferences';
-		else
-			return 'contacts';
+		return {
+			conference : 'conferences',
+			contact    : 'contacts',
+		};
+	}
+	
+	ns.ModuleControl.prototype.setGuide = function() {
+		const self = this;
+		self.guide = new library.component.InfoBox({
+			containerId : 'conversations',
+			element     : null,
+		});
 	}
 	
 })( library.view );
@@ -232,24 +240,60 @@ var hello = window.hello || {};
 	presence
 */
 (function( ns, undefined ) {
-	ns.Presence.prototype.getTitleString = function() {
-		const self = this;
-		return 'Conference rooms';
-	}
+	ns.Presence.prototype.setCss = function() { return; }
+	ns.Presence.prototype.initFoldit = function() { return; }
 	
-	ns.Presence.prototype.buildElement = function() {
+	ns.Presence.prototype.buildRooms = function() {
 		const self = this;
-		const title = self.getTitleString();
-		const tmplId = 'simple-presence-module-tmpl';
+		const title = self.getTitleString( 'conference' );
+		const tmplId = 'simple-presence-rooms-tmpl';
 		const conf = {
-			clientId     : self.clientId,
+			roomsId      : self.roomsId,
 			title        : title,
-			connStateId  : self.connectionState,
-			contactsId   : self.contactsId,
+			connStateId  : self.roomConnState,
+			itemsId      : self.roomItemsId,
 		};
 		const el = hello.template.getElement(  tmplId, conf );
-		const cont = document.getElementById( self.containerId );
+		const cont = document.getElementById( self.containers.conference );
 		cont.appendChild( el );
+	}
+	
+	ns.Presence.prototype.buildContacts = function() {
+		const self = this;
+		const title = self.getTitleString( 'conference' );
+		const tmplId = 'simple-presence-rooms-tmpl';
+		const conf = {
+			roomsId      : self.contactsId,
+			title        : title,
+			connStateId  : self.contactConnState,
+			itemsId      : self.contactItemsId,
+		};
+		const el = hello.template.getElement(  tmplId, conf );
+		const cont = document.getElementById( self.containers.contact );
+		cont.appendChild( el );
+	}
+	
+	ns.Presence.prototype.initStatus = function() {
+		const self = this;
+		console.log( 'Presence.initStatus' );
+		const conf = {
+			containerId : null,
+			type        : 'icon',
+			cssClass    : 'fa-circle',
+			statusMap   : {
+				offline    : 'Off',
+				online     : 'On',
+				open       : 'Warning',
+				connecting : 'Notify',
+				error      : 'Alert',
+			},
+		};
+		
+		conf.containerId = self.roomConnState;
+		self.roomConnState = new library.component.StatusIndicator( conf );
+		
+		conf.containerId = self.contactConnState;
+		self.contactConnState = new library.component.StatusIndicator( conf );
 	}
 	
 })( library.view );
@@ -278,8 +322,8 @@ var hello = window.hello || {};
 		};
 		
 		const el = hello.template.getElement( tmplId, conf );
-		const cont = document.getElementById( self.containerId );
-		cont.appendChild( el );
+		const container = document.getElementById( self.containers.contact );
+		container.appendChild( el );
 		
 		// Toggle offline users
 		var toggleOfflineUsers = document.getElementById( 'button_' + conf.inactiveId );

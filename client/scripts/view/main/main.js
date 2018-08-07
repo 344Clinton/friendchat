@@ -327,10 +327,11 @@ library.view = library.view || {};
 	}
 	
 	ns.Treeroot.prototype.buildElement = function() {
-		var self = this;
-		var tmplId = 'treeroot-module-tmpl';
-		var title = self.getTitleString();
-		var conf = {
+		const self = this;
+		console.log( 'Treeroot.buildElement', self.containerId );
+		const tmplId = 'treeroot-module-tmpl';
+		const title = self.getTitleString();
+		const conf = {
 			clientId : self.clientId,
 			folditId : self.contactsFoldit,
 			moduleTitle : title,
@@ -340,8 +341,8 @@ library.view = library.view || {};
 			inactiveFolditId : self.inactiveFolditId,
 			inactiveId : self.inactiveId,
 		};
-		var element = hello.template.getElement( tmplId, conf );
-		var container = document.getElementById( self.containerId );
+		const element = hello.template.getElement( tmplId, conf );
+		const container = document.getElementById( self.containers.contact );
 		container.appendChild( element );
 	}
 	
@@ -1110,7 +1111,7 @@ library.view = library.view || {};
 		};
 		
 		var element = hello.template.getElement( tmplId, conf );
-		var container = document.getElementById( self.containerId );
+		var container = document.getElementById( self.containers.conference );
 		container.appendChild( element );
 	}
 	
@@ -1202,8 +1203,11 @@ library.view = library.view || {};
 (function( ns, undefined ) {
 	ns.Presence = function( conf ) {
 		const self = this;
-		self.createRoomId = friendUP.tool.uid( 'create' );
 		library.view.BaseModule.call( self, conf );
+		
+		self.rooms = {};
+		// self.contacts is set by BaseModule
+		
 		self.init();
 	}
 	
@@ -1213,7 +1217,7 @@ library.view = library.view || {};
 	
 	// Pirvate
 	ns.Presence.prototype.init = function() {
-		var self = this;
+		const self = this;
 		self.queryMap[ 'account-ask' ] = askForAccount;
 		self.queryMap[ 'account-create' ] = createAccount;
 		self.queryMap[ 'login-invalid' ] = loginInvalid;
@@ -1222,28 +1226,175 @@ library.view = library.view || {};
 		function createAccount( e ) { self.createAccount( e ); }
 		function loginInvalid( e ) { self.loginInvalid( e ); }
 		
-		self.bindView();
+		self.bindModuleEvents();
 		self.bindUI();
 	}
 	
-	ns.Presence.prototype.bindView = function() {
+	ns.Presence.prototype.buildElement = function() {
+		const self = this;
+		self.roomsId = friendUP.tool.uid( 'rooms' );
+		self.roomConnState = friendUP.tool.uid( 'conn' );
+		self.roomItemsId = friendUP.tool.uid( 'items' );
+		
+		self.contactsId = friendUP.tool.uid( 'contacts' );
+		self.contactConnState = friendUP.tool.uid( 'conn' );
+		self.contactItemsId = friendUP.tool.uid( 'items' );
+		
+		self.buildRooms();
+		self.buildContacts();
+	}
+	
+	ns.Presence.prototype.buildRooms = function() {
+		const self = this;
+		const tmplId = 'presence-rooms-tmpl';
+		self.roomFoldit = friendUP.tool.uid( 'fold' );
+		const conf = {
+			roomsId      : self.roomsId,
+			folditId     : self.roomFoldit,
+			title        : self.getTitleString( 'conference' ),
+			connStateId  : self.roomConnState,
+			itemsId      : self.roomItemsId,
+		};
+		const el = hello.template.getElement( tmplId, conf );
+		const container = document.getElementById( self.containers.conference );
+		container.appendChild( el );
+	}
+	
+	ns.Presence.prototype.buildContacts = function() {
+		const self = this;
+		const tmplId = 'presence-rooms-tmpl';
+		self.contactFoldit = friendUP.tool.uid( 'fold' );
+		const conf = {
+			roomsId     : self.contactsId,
+			folditId     : self.contactFoldit,
+			title        : self.getTitleString( 'contact' ),
+			connStateId  : self.contactConnState,
+			itemsId      : self.contactItemsId,
+		};
+		const el = hello.template.getElement( tmplId, conf );
+		const container = document.getElementById( self.containers.contact );
+		container.appendChild( el );
+	}
+	
+	ns.Presence.prototype.initStatus = function() {
+		const self = this;
+		console.log( 'Presence.initStatus' );
+		const conf = {
+			containerId : null,
+			type        : 'icon',
+			cssClass    : 'fa-circle-o',
+			statusMap   : {
+				offline    : 'Off',
+				online     : 'On',
+				open       : 'Warning',
+				connecting : 'Notify',
+				error      : 'Alert',
+			},
+		};
+		
+		conf.containerId = self.roomConnState;
+		self.roomConnState = new library.component.StatusIndicator( conf );
+		
+		conf.containerId = self.contactConnState;
+		self.contactConnState = new library.component.StatusIndicator( conf );
+	}
+	
+	ns.Presence.prototype.initFoldit = function() {
 		var self = this;
-		self.view.on( 'join', joinedRoom );
-		self.view.on( 'leave', leftRoom );
+		self.roomFoldit = new library.component.Foldit({
+			folderId : self.roomFoldit,
+			foldeeId : self.roomItemsId,
+		});
+		
+		self.contactFoldit = new library.component.Foldit({
+			folderId : self.contactFoldit,
+			foldeeId : self.contactItemsId,
+		});
+	}
+	
+	ns.Presence.prototype.getTitleString = function( type ) {
+		const self = this;
+		if ( 'conference' === type )
+			return 'Conference rooms';
+		else
+			return 'Workgroup contacts';
+	}
+	
+	ns.Presence.prototype.bindModuleEvents = function() {
+		var self = this;
+		self.mod.on( 'join', joinedRoom );
+		self.mod.on( 'leave', leftRoom );
+		self.mod.on( 'contact-list', contactList );
+		self.mod.on( 'contact-add', contactAdd );
+		self.mod.on( 'contact-remove', contactRemove );
 		
 		function joinedRoom( e ) { self.handleRoomJoin( e ); }
 		function leftRoom( e ) { self.handleRoomLeave( e ); }
+		function contactList( e ) { self.handleContactList( e ); }
+		function contactAdd( e ) { self.handleContactAdd( e ); }
+		function contactRemove( e ) { self.handleContactRemove( e ); }
+	}
+	
+	ns.Presence.prototype.showMenu = function( type ) {
+		const self = this;
+		let menuEl = null;
+		if ( 'conference' === type )
+			menuEl = self.roomsMenu;
+		else
+			menuEl = self.contactsMenu;
+		
+		const options = self.getMenuOptions( type );
+		if ( !options || !options.length )
+			return;
+		
+		new library.component.MiniMenu(
+			hello.template,
+			menuEl,
+			'hello',
+			options,
+			onSelect,
+		);
+		
+		function onSelect( action ) {
+			self.handleAction( action, type );
+		}
+	}
+	
+	ns.Presence.prototype.updateTitle = function() {
+		const self = this;
+		update( self.roomsId, 'conference' );
+		update( self.contactsId, 'contact' );
+		
+		function update( id, type ) {
+			let el = document.getElementById( id );
+			if ( !el )
+				return;
+			
+			let title = self.getTitleString( type );
+			let titleEl = el.querySelector( '.module-title' );
+			titleEl.textContent = title;
+		}
+	}
+	
+	ns.Presence.prototype.connectionHandler = function( state ) {
+		const self = this;
+		console.log( 'Presence.connectionHandler', state );
+		if ( self.roomConnState )
+			self.roomConnState.set( state.type );
+		
+		if ( self.contactConnState )
+			self.contactConnState.set( state.type );
 	}
 	
 	ns.Presence.prototype.handleRoomJoin = function( conf ) {
 		const self = this;
 		const roomConf = {
-			containerId : self.contactsId,
+			containerId : self.roomItemsId,
 			parentView  : window.View,
 			room        : conf,
 		};
 		const room = new library.view.PresenceRoom( roomConf );
-		self.contacts[ room.clientId ] = room;
+		self.rooms[ room.clientId ] = room;
 		self.emit( 'add', room );
 	}
 	
@@ -1252,20 +1403,24 @@ library.view = library.view || {};
 		self.emit( 'remove', roomId );
 	}
 	
-	ns.Presence.prototype.buildElement = function() {
-		var self = this;
-		const tmplId = 'presence-module-tmpl';
-		const conf = {
-			clientId     : self.clientId,
-			folditId     : self.contactsFoldit,
-			title        : self.getTitleString(),
-			connStateId  : self.connectionState,
-			contactsId   : self.contactsId,
-		};
-		var el = hello.template.getElement( tmplId, conf );
-		var container = document.getElementById( self.containerId );
-		container.appendChild( el );
+	ns.Presence.prototype.handleContactList = function( list ) { 
+		const self = this;
+		console.log( 'handleContactList', list );
+		
 	}
+	
+	ns.Presence.prototype.handleContactAdd = function( contact ) { 
+		const self = this;
+		console.log( 'handleContactAdd', contact );
+		
+	}
+	
+	ns.Presence.prototype.handleContactRemove = function( clientId ) { 
+		const self = this;
+		console.log( 'handleContactRemove', clientId );
+		
+	}
+	
 	
 	ns.Presence.prototype.bindUI = function() {
 		const self = this;
@@ -1881,7 +2036,6 @@ library.view = library.view || {};
 	ns.ModuleControl = function( recent ) {
 		const self = this;
 		self.recent = recent;
-		self.parentView = window.View;
 		self.type = 'module';
 		self.view = null;
 		self.containerId = 'active-modules';
@@ -1918,16 +2072,21 @@ library.view = library.view || {};
 			telegram : library.view.Telegram,
 		};
 		
-		self.guide = new library.component.InfoBox({
-			containerId : self.getContainerId(),
-			element     : null,
-		});
+		self.setGuide();
 		
 		self.view = new library.component.SubView({
-			parent : self.parentView,
+			parent : window.View,
 			type : self.type,
 		});
 		self.bindView();
+	}
+	
+	ns.ModuleControl.prototype.setGuide = function() {
+		const self = this;
+		self.guide = new library.component.InfoBox({
+			containerId : 'active-modules',
+			element     : null,
+		});
 	}
 	
 	ns.ModuleControl.prototype.bindView = function() {
@@ -1948,9 +2107,12 @@ library.view = library.view || {};
 		self.addModule( data );
 	}
 	
-	ns.ModuleControl.prototype.getContainerId = function() {
+	ns.ModuleControl.prototype.getContainerId = function( moduleType ) {
 		const self = this;
-		return 'active-modules';
+		return {
+			conference : 'active-modules',
+			contact    : 'active-modules',
+		};
 	}
 	
 	ns.ModuleControl.prototype.addModule = function( data ) {
@@ -1959,12 +2121,12 @@ library.view = library.view || {};
 			self.guide.hide();
 		
 		// TODO: Check for module options and gui options
-		const containerId = self.getContainerId( data.module.type );
+		const containers = self.getContainerId( data.module.type );
 		const conf = {
-			module : data.module,
-			identity : data.identity,
-			containerId : containerId,
-			parentView : window.View
+			module     : data.module,
+			identity   : data.identity,
+			containers : containers,
+			parentView : window.View,
 		};
 		let Constructor = self.moduleTypeMap[ data.module.type ];
 		if ( !Constructor ) {

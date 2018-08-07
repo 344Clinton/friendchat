@@ -666,14 +666,14 @@ id,
 </script>
 
 <!-- PRESENCE 
-clientId,
+roomsId,
 folditId.
 moduleTitle,
 connStateId,
-contactsId,
+itemsId,
 -->
-<script id="presence-module-tmpl" type="text/html">
-<div id="<%= clientId %>" class="module bar column BorderBottom">
+<script id="presence-rooms-tmpl" type="text/html">
+<div id="<%= roomsId %>" class="module bar column BorderBottom">
     <div id="<%= folditId %>" class="module-head group row fortify MousePointer">
         <div class="module-logo fortify">
             <div class="logo center-child">
@@ -693,7 +693,7 @@ contactsId,
             </div>
         </div>
     </div>
-    <div id="<%= contactsId %>" class="contacts ZebraList Interactive">
+    <div id="<%= itemsId %>" class="contacts ZebraList Interactive">
     </div>
 </div>
 </script>

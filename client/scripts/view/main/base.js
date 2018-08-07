@@ -219,14 +219,14 @@ library.view = library.view || {};
 		library.component.EventEmitter.call( self, eventSink );
 		self.clientId = conf.module.clientId;
 		self.id = self.clientId;
-		self.parentView = conf.parentView;
-		self.containerId = conf.containerId
+		self.containers = conf.containers
 		self.type = conf.module.type;
 		self.module = conf.module;
 		self.identity = conf.identity;
 		self.tmplId = conf.tmplId || '';
 		
-		self.view = null;
+		self.mod = null;
+		self.rooms = {};
 		self.contacts = {};
 		self.contactsId = friendUP.tool.uid( 'contacts' );
 		self.connectionState = friendUP.tool.uid( 'connectionIndicator' );
@@ -236,7 +236,7 @@ library.view = library.view || {};
 		//self.optionMenu = friendUP.tool.uid( 'options' );
 		self.options = {};
 		
-		self.initBaseModule();
+		self.initBaseModule( conf.parentView );
 		
 		function eventSink() {
 			//console.log( 'BaseModule, eventSink', arguments );
@@ -247,18 +247,91 @@ library.view = library.view || {};
 	
 	// Public
 	
-	// Must be implemented by each module
+	// Implement in module
 	
+	/*
+	getMenuOptions
+	
+	returns an array of actions available for the module.
+	Predefined actions can be used from self.menuActions,
+	an instance of library.component.MiniMenuActions
+	*/
 	ns.BaseModule.prototype.getMenuOptions = function() {
 		const self = this;
-		return [];
+		return [
+			self.menuActions[ 'settings' ],
+		];
+	}
+	
+	/*
+	setLogo
+	
+	Does nothing for normal UI. For advanced UI it sets the logo
+	in the head of the module
+	
+	*/
+	ns.BaseModule.prototype.setLogo = function() {
+		const self = this;
+		const conf = {
+		};
+		self.setLogoCss( conf );
+	}
+	
+	/*
+	updateTitle
+	
+	Updates the head bar of the module during initializtion and in response
+	to various events from app
+	
+	Use with base module template, implement in module of custom templates
+	where the selector no longer fits
+	*/
+	ns.BaseModule.prototype.updateTitle = function() {
+		const self = this;
+		const title = self.getTitleString();
+		const parentElement = document.getElementById( self.clientId );
+		const titleElement = parentElement.querySelector( '.module-title' );
+		titleElement.textContent = title;
+	}
+	
+	/*
+	bindMenuButton
+	
+	binds the minimenu button on the module head, implement for module
+	if this queryselector no longer fits
+	
+	*/
+	ns.BaseModule.prototype.bindMenuButton = function() {
+		const self = this;
+		const roomsEl = document.getElementById( self.roomsId );
+		const contactsEl = document.getElementById( self.contactsId );
+		if ( roomsEl ) {
+			self.roomsMenu = roomsEl.querySelector( '.actions .item-menu' );
+			self.roomsMenu.addEventListener( 'click', roomsMenuClick, false );
+		}
+		
+		if ( contactsEl ) {
+			self.contactsMenu = contactsEl.querySelector( '.actions .item-menu' );
+			self.contactsMenu.addEventListener( 'click', contactsMenuClick, false );
+		}
+		
+		function roomsMenuClick( e ) {
+			e.stopPropagation();
+			e.preventDefault();
+			self.showMenu( 'conference' );
+		}
+		
+		function contactsMenuClick( e ) {
+			e.stopPropagation();
+			e.preventDefault();
+			self.showMenu( 'contacts' );
+		}
 	}
 	
 	// Private
 	
-	ns.BaseModule.prototype.initBaseModule = function() {
+	ns.BaseModule.prototype.initBaseModule = function( parentConn ) {
 		var self = this;
-		self.menuActions = new library.component.MiniMenuActions();
 		if ( !self.identity ) {
 			self.identity = {
 				name : '---',
@@ -268,10 +341,37 @@ library.view = library.view || {};
 		
 		self.buildElement();
 		self.setCss();
+		self.initFoldit();
+		self.initStatus();
+		self.bindMenuButton();
+		self.updateTitle();
+		
+		self.menuActions = new library.component.MiniMenuActions();
+		
+		// app.module interface
+		self.mod = new library.component.SubView({
+			parent : parentConn,
+			type : self.clientId,
+		});
+		self.mod.on( 'connection', connection );
+		self.mod.on( 'remove', removeContact );
+		self.mod.on( 'update', applyUpdate );
+		self.mod.on( 'query', handleQuery );
+		self.mod.on( 'info', handleInfo );
+		
+		function connection( e ) { self.connectionHandler( e ); }
+		function removeContact( e ) { self.removeContact( e ); }
+		function applyUpdate( e ) { self.updateHandler( e ); }
+		function handleQuery( e ) { self.queryHandler( e ); }
+		function handleInfo( e ) { self.infoHandler( e ); }
+		
 		self.updateMap = {
 			'module' : updateModule,
 			'identity' : updateIdentity,
 		};
+		
+		function updateModule( msg ) { self.updateModule( msg ); }
+		function updateIdentity( msg ) { self.updateIdentity( msg ); }
 		
 		self.errorStrings = {
 			'ERR_HOST_ENOTFOUND'    : View.i18n('i18n_host_was_not_found'),
@@ -280,25 +380,6 @@ library.view = library.view || {};
 			'ERR_RESPONSE_NOT_OK'   : View.i18n('i18n_host_declined_request'),
 		}
 		
-		function updateModule( msg ) { self.updateModule( msg ); }
-		function updateIdentity( msg ) { self.updateIdentity( msg ); }
-		
-		// application interface
-		self.view = new library.component.SubView({
-			parent : self.parentView,
-			type : self.clientId,
-		});
-		self.view.on( 'connection', connection );
-		self.view.on( 'remove', removeContact );
-		self.view.on( 'update', applyUpdate );
-		self.view.on( 'query', handleQuery );
-		self.view.on( 'info', handleInfo );
-		
-		function connection( e ) { self.connectionHandler( e ); }
-		function removeContact( e ) { self.removeContact( e ); }
-		function applyUpdate( e ) { self.updateHandler( e ); }
-		function handleQuery( e ) { self.queryHandler( e ); }
-		function handleInfo( e ) { self.infoHandler( e ); }
 		
 		self.queryMap = {
 			'text'           : queryText,
@@ -322,93 +403,12 @@ library.view = library.view || {};
 		function showMessage( e ) { self.showMessage( e ); }
 		function showInitializing( e ) { self.showInitializing( e ); }
 		
-		self.initFoldit();
-		self.initStatus();
-		
 		const boxConf = {
 			element     : null,
 			containerId : self.activeId || self.contactsId,
 		};
 		self.serverMessage = new library.component.InfoBox( boxConf );
 		
-		//self.addMenu();
-		self.bindMenuBtn();
-		self.updateTitle();
-		
-	}
-	
-	ns.BaseModule.prototype.addMenu = function() {
-		var self = this;
-		var settingsId = friendUP.tool.uid( 'settings' );
-		var settingsItem = {
-			type : 'item',
-			id : settingsId,
-			name : 'Settings',
-			faIcon : 'fa-cog',
-		};
-		
-		var reconnectId = friendUP.tool.uid( 'reconnect' );
-		var reconnectItem = {
-			type : 'item',
-			id : reconnectId,
-			name : 'Reconnect',
-			faIcon : 'fa-refresh',
-		};
-		
-		var disconnectId = friendUP.tool.uid( 'disconnect' );
-		var disconnectItem = {
-			type : 'item',
-			id : disconnectId,
-			name : 'Disconnect',
-			faIcon : 'fa-power-off',
-		};
-		
-		var removeId = friendUP.tool.uid( 'remove' );
-		var removeItem = {
-			type : 'item',
-			id : removeId,
-			name : 'Remove ',
-			faIcon : 'fa-close',
-		};
-		
-		self.menuId = friendUP.tool.uid( 'menu' );
-		var folder = {
-			type : 'folder',
-			id : self.menuId,
-			name : 'module',
-			faIcon : 'fa-folder-o',
-			items : [
-				settingsItem,
-				reconnectItem,
-				disconnectItem,
-				removeItem,
-			],
-		};
-		
-		main.menu.add( folder, 'modules' );
-		
-		main.menu.on( settingsId, showSettings );
-		main.menu.on( reconnectId, doReconnect );
-		main.menu.on( disconnectId, doDisconnect );
-		main.menu.on( removeId, doRemove );
-		
-		function showSettings() { self.optionSettings(); }
-		function doReconnect() { self.optionReconnect(); }
-		function doDisconnect() { self.optionDisconnect(); }
-		function doRemove( msg ) { self.optionRemove( msg ); }
-		
-	}
-	
-	ns.BaseModule.prototype.bindMenuBtn = function() {
-		const self = this;
-		const el = document.getElementById( self.clientId );
-		self.itemMenu = el.querySelector( '.actions .item-menu' );
-		self.itemMenu.addEventListener( 'click', menuBtnClick, false );
-		function menuBtnClick( e ) {
-			e.stopPropagation();
-			e.preventDefault();
-			self.showMenu();
-		}
 	}
 	
 	ns.BaseModule.prototype.showMenu = function() {
@@ -438,21 +438,22 @@ library.view = library.view || {};
 		});
 	}
 	
-	// specific modules may want to reimplement
+	// this is an example implementation, modules probably need 
+	// something specific to their own needs
 	ns.BaseModule.prototype.buildElement = function() {
 		var self = this;
 		var tmplId = self.tmplId || 'base-module-tmpl';
 		var conf = {
-			clientId : self.clientId,
-			folditId : self.contactsFoldit,
-			moduleTitle : self.module.name,
+			clientId          : self.clientId,
+			folditId          : self.contactsFoldit,
+			moduleTitle       : self.module.name,
 			connectionStateId : self.connectionState,
-			optionId : self.optionMenu,
-			contactsId : self.contactsId,
+			optionId          : self.optionMenu,
+			contactsId        : self.contactsId,
 		};
 		
 		var element = hello.template.getElement( tmplId, conf );
-		var container = document.getElementById( self.containerId );
+		var container = document.getElementById( self.containers[ self.moduleType ]);
 		container.appendChild( element );
 	}
 	
@@ -480,15 +481,7 @@ library.view = library.view || {};
 		});
 	}
 	
-	// re implement for a specific module
-	ns.BaseModule.prototype.setCss = function() {
-		const self = this;
-		const conf = {
-		};
-		self.addCss( conf );
-	}
-	
-	ns.BaseModule.prototype.addCss = function( conf, tmplId ) {
+	ns.BaseModule.prototype.setLogoCss = function( conf, tmplId ) {
 		var self = this;
 		tmplId = tmplId || 'fa-icon-logo-css-tmpl';
 		conf.moduleId = self.clientId;
@@ -587,7 +580,7 @@ library.view = library.view || {};
 		var self = this;
 		var handler = self.queryMap[ msg.type ];
 		if ( !handler ) {
-			console.log( 'view.handleQuery - no handler for', msg );
+			console.log( 'mod.handleQuery - no handler for', msg );
 			return;
 		}
 		
@@ -745,18 +738,6 @@ library.view = library.view || {};
 		handler( info.data );
 	}
 	
-	// Use this fn while using base module template. Implement your own if you make your
-	// own template with changes relevant to this function
-	ns.BaseModule.prototype.updateTitle = function() {
-		var self = this;
-		var title = self.getTitleString();
-		var parentElement = document.getElementById( self.clientId );
-		var titleElement = parentElement.querySelector( '.module-title' );
-		titleElement.textContent = title;
-		
-		//main.menu.update( self.menuId, title );
-	}
-	
 	ns.BaseModule.prototype.getTitleString = function() {
 		var self = this;
 		var title = '';
@@ -818,12 +799,12 @@ library.view = library.view || {};
 	
 	ns.BaseModule.prototype.send = function( msg ) {
 		var self = this;
-		self.view.sendMessage( msg );
+		self.mod.sendMessage( msg );
 	}
 	
 	ns.BaseModule.prototype.close = function() {
 		var self = this;
-		self.view.close();
+		self.mod.close();
 		self.removeCss();
 		//main.menu.remove( self.menuId );
 		
