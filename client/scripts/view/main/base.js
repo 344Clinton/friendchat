@@ -271,26 +271,25 @@ library.view = library.view || {};
 	}
 	
 	/*
-	setLogo
+	setLogoCss
 	
 	Does nothing for normal UI. For advanced UI it sets the css for
 	the logo in the head of the module
 	
 	for the icon logo, set the icon in html, then use this to set special css for it
 	for the image logo, pass the url and it will be set as background image
-	
 	*/
-	ns.BaseModule.prototype.setLogo = function() {
+	ns.BaseModule.prototype.setLogoCss = function() {
 		const self = this;
-		throw new Error( 'BaseModule.setLogo - implement for module' );
+		throw new Error( 'BaseModule.setLogoCss - implement for module' );
 		// Two options exist, feel free to add more. These are defined in main.html
 		const tmplId = 'fa-icon-logo-css-tmpl' || 'image-logo-css-tmpl';
 		// template conf
 		const conf = {
 			logoPath  : 'url.to/thing.jpg',
 		};
-		self.setLogoCss( tmplId, conf, self.roomsId );
-		self.setLogoCss( tmplId, conf, self.contactsId );
+		self.insertLogoCss( tmplId, conf, self.roomsId );
+		self.insertLogoCss( tmplId, conf, self.contactsId );
 	}
 	
 	/*
@@ -376,7 +375,8 @@ library.view = library.view || {};
 		function contactsMenuClick( e ) {
 			e.stopPropagation();
 			e.preventDefault();
-			self.showMenu( 'contacts' );
+			
+			self.showMenu( 'contact' );
 		}
 	}
 	
@@ -502,6 +502,25 @@ library.view = library.view || {};
 	}
 	
 	/*
+	setServerMessageBox
+	
+	sets the object that shows info messages from the server, 
+	like 'module initializeing' etc
+	
+	Usually the/a items container is used for this
+	
+	*/
+	ns.BaseModule.prototype.setServerMessageBox = function() {
+		const self = this;
+		const boxConf = {
+			element     : null,
+			containerId : self.roomItemsId,
+		};
+		console.log( 'infobox conf', boxConf );
+		self.serverMessage = new library.component.InfoBox( boxConf );
+	}
+	
+	/*
 	close
 	
 	Implement for module. Must release all resources held by the module
@@ -526,7 +545,7 @@ library.view = library.view || {};
 		}
 		
 		self.buildElement();
-		self.setCss();
+		self.setLogoCss();
 		self.initFoldit();
 		self.initConnStatus();
 		self.bindMenuButton();
@@ -588,12 +607,8 @@ library.view = library.view || {};
 		function showMessage( e ) { self.showMessage( e ); }
 		function showInitializing( e ) { self.showInitializing( e ); }
 		
-		const boxConf = {
-			element     : null,
-			containerId : self.activeId || self.contactsId,
-		};
-		self.serverMessage = new library.component.InfoBox( boxConf );
 		
+		self.setServerMessageBox();
 	}
 	
 	ns.BaseModule.prototype.showMenu = function( type ) {
@@ -678,7 +693,7 @@ library.view = library.view || {};
 		}
 	}
 	
-	ns.BaseModule.prototype.setLogoCss = function( tmplId, conf, elementId ) {
+	ns.BaseModule.prototype.insertLogoCss = function( tmplId, conf, elementId ) {
 		const self = this;
 		tmplId = tmplId || 'fa-icon-logo-css-tmpl';
 		elementId = elementId || self.clientId;

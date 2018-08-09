@@ -250,7 +250,7 @@ var hello = window.hello || {};
 	presence
 */
 (function( ns, undefined ) {
-	ns.Presence.prototype.setCss = function() { return; }
+	ns.Presence.prototype.setLogoCss = function() { return; }
 	ns.Presence.prototype.initFoldit = function() { return; }
 	
 	ns.Presence.prototype.buildRoomsElement = function() {
@@ -313,9 +313,12 @@ var hello = window.hello || {};
 	treeroot
 */
 (function( ns, undefined ) {
+	ns.Treeroot.prototype.setLogoCss = function() { return; }
+	ns.Treeroot.prototype.initFoldit = function() { return; }
+	
 	ns.Treeroot.prototype.getTitleString = function() {
 		const self = this;
-		return 'Contacts';
+		return 'Community Contacts';
 	}
 	
 	ns.Treeroot.prototype.buildContactsElement = function() {
@@ -355,8 +358,9 @@ var hello = window.hello || {};
 		}
 	}
 	
-	ns.Treeroot.prototype.getMenuOptions = function() {
+	ns.Treeroot.prototype.getMenuOptions = function( type ) {
 		const self = this;
+		console.log( 'getMenuOptions', type )
 		const opts = [
 			self.menuActions[ 'add-contact' ],
 			self.menuActions[ 'settings' ],
@@ -365,50 +369,6 @@ var hello = window.hello || {};
 		
 		return opts;
 	}
-	
-	ns.Treeroot.prototype.addMenu = function() {
-		const self = this;
-		return;
-		const settingsId = friendUP.tool.uid( 'settings' );
-		const settingsItem = {
-			type : 'item',
-			id : settingsId,
-			name : 'Settings',
-			faIcon : 'fa-cog',
-		};
-		
-		const reconnectId = friendUP.tool.uid( 'reconnect' );
-		const reconnectItem = {
-			type : 'item',
-			id : reconnectId,
-			name : 'Reconnect',
-			faIcon : 'fa-refresh',
-		};
-		
-		self.menuId = friendUP.tool.uid( 'menu' );
-		const folder = {
-			type : 'folder',
-			id : self.menuId,
-			name : 'module',
-			faIcon : 'fa-folder-o',
-			items : [
-				settingsItem,
-				reconnectItem,
-			],
-		};
-		
-		main.menu.add( folder, 'modules' );
-		
-		main.menu.on( settingsId, showSettings );
-		main.menu.on( reconnectId, doReconnect );
-		
-		function showSettings() { self.optionSettings(); }
-		function doReconnect() { self.optionReconnect(); }
-	}
-	
-	ns.Treeroot.prototype.setCss = function() { return; }
-	ns.Treeroot.prototype.initFoldit = function() { return; }
-	
 })( library.view );
 
 // Rececnt conversations

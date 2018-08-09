@@ -354,20 +354,20 @@ library.view = library.view || {};
 		container.appendChild( element );
 	}
 	
-	ns.Treeroot.prototype.setLogo = function() {
+	ns.Treeroot.prototype.setLogoCss = function() {
 		var self = this;
 		var logoPath = 'https://treeroot.org/upload/images-master/logo.png';
 		var conf = {
 			logoPath : logoPath,
 		};
-		self.setLogoCss( conf, 'image-logo-css-tmpl' );
+		self.insertLogoCss( 'image-logo-css-tmpl', conf, self.contactsId );
 	}
 	
 	ns.Treeroot.prototype.initFoldit = function() {
 		var self = this;
 		self.contactsFoldit = new library.component.Foldit({
 			folderId : self.contactsFoldit,
-			foldeeId : self.contactsId,
+			foldeeId : self.contactItemsId,
 		});
 		
 		self.inactiveFoldit = new library.component.Foldit({
@@ -375,6 +375,14 @@ library.view = library.view || {};
 			foldeeId : self.inactiveId,
 			startClosed : true,
 		});
+	}
+	
+	ns.Treeroot.prototype.setServerMessageBox = function() {
+		const self = this;
+		const conf = {
+			containerId : self.activeId,
+		};
+		self.serverMessage = new library.component.InfoBox( conf );
 	}
 	
 	ns.Treeroot.prototype.serverOffline = function( data ) {
@@ -845,8 +853,9 @@ library.view = library.view || {};
 		}
 	}
 	
-	ns.Treeroot.prototype.getMenuOptions = function() {
+	ns.Treeroot.prototype.getMenuOptions = function( type ) {
 		const self = this;
+		console.log( 'getMenuOptions', type );
 		const opts = [
 			self.menuActions[ 'add-contact' ],
 			self.menuActions[ 'settings' ],
@@ -1071,6 +1080,7 @@ library.view = library.view || {};
 			state.unread = num;
 			self.emit( 'msg-waiting', state );
 		}
+		
 		function handleHighlight( msg ) {
 			console.log( 'view.ircPriv - highlight - NYI', msg );
 		}
@@ -1096,27 +1106,25 @@ library.view = library.view || {};
 		};
 		
 		self.connectionMap = {
-			'error' : cleanupClient,
+			'error'   : cleanupClient,
 			'offline' : cleanupClient,
 		};
 		
 		function cleanupClient( msg ) { self.cleanupClient( msg ); }
 		
-		self.bindView();
-		self.bindEvents();
+		self.bindModuleEvents();
 	}
 	
-	ns.IRC.prototype.buildElement = function() {
+	ns.IRC.prototype.buildRoomsElement = function() {
 		var self = this;
 		var tmplId = 'irc-module-tmpl';
 		var title = self.getTitleString();
 		var conf = {
-			clientId          : self.clientId,
-			folditId          : self.contactsFoldit,
-			moduleTitle       : title,
-			connectionStateId : self.connectionState,
-			optionId          : self.optionMenu,
-			contactsId        : self.contactsId,
+			clientId    : self.roomsId,
+			folditId    : self.roomsFoldit,
+			moduleTitle : title,
+			connStateId : self.roomsConnState,
+			itemsId     : self.roomItemsId,
 		};
 		
 		var element = hello.template.getElement( tmplId, conf );
@@ -1124,29 +1132,44 @@ library.view = library.view || {};
 		container.appendChild( element );
 	}
 	
-	ns.IRC.prototype.cleanupClient = function() {
-		var self = this;
+	ns.IRC.prototype.buildContactsElement = function() {
+		const self = this;
+		self.contactsId = null;
+		self.contactsFoldit = null;
+		self.contactsConnState = null;
+		self.contactItemsId = null;
 	}
 	
-	ns.IRC.prototype.bindView = function() {
+	ns.IRC.prototype.setLogoCss = function() {
+		const self = this;
+		const tmplId = 'fa-icon-logo-css-tmpl';
+		// template conf
+		const conf = {
+		};
+		self.insertLogoCss( tmplId, conf, self.roomsId );
+		//self.insertLogoCss( tmplId, conf, self.contactsId );
+	}
+	
+	ns.IRC.prototype.bindModuleEvents = function() {
 		var self = this;
-		self.view.on( 'private', handlePrivate );
-		self.view.on( 'join', handleJoin );
-		self.view.on( 'leave', handleLeave );
-		self.view.on( 'setting', handleSetting );
+		self.mod.on( 'private', handlePrivate );
+		self.mod.on( 'join', handleJoin );
+		self.mod.on( 'leave', handleLeave );
+		self.mod.on( 'setting', handleSetting );
+		self.mod.on( 'remove', handleRemove );
 		
 		function handlePrivate( e ) { self.addPrivate( e ); }
 		function handleJoin( e ) { self.joinChannel( e ); }
 		function handleLeave( e ) { self.leaveChannel( e ); }
-		function handleRemove( e ) { self.removePriv( e ); }
 		function handleSetting( e ) { self.updateSetting( e ); }
+		function handleRemove( e ) { self.removePrivate( e ); }
 		
 	}
 	
 	ns.IRC.prototype.addPrivate = function( data ) {
 		var self = this;
 		var conf = {
-			containerId : self.contactsId,
+			containerId : self.roomItemsId,
 			parentView : window.View,
 			contact : data,
 		};
@@ -1158,7 +1181,7 @@ library.view = library.view || {};
 	ns.IRC.prototype.joinChannel = function( data ) {
 		var self = this;
 		var conf = {
-			containerId : self.contactsId,
+			containerId : self.roomItemsId,
 			parentView : window.View,
 			channel : data,
 		};
@@ -1177,6 +1200,16 @@ library.view = library.view || {};
 		delete self.contacts[ clientId ];
 	}
 	
+	ns.IRC.prototype.removePrivate = function( clientId ) {
+		const self = this;
+		const priv = self.contacts[ clientId ];
+		if ( !priv )
+			return;
+		
+		priv.close();
+		delete self.contacts[ clientId ];
+	}
+	
 	ns.IRC.prototype.updateSetting = function( data ) {
 		var self = this;
 		if ( data.setting != 'displayName' )
@@ -1185,12 +1218,6 @@ library.view = library.view || {};
 		var element = document.getElementById( self.clientId );
 		var title = element.querySelector( '.module-title' );
 		title.innerHTML = data.value;
-	}
-	
-	ns.IRC.prototype.bindEvents = function() {
-		const self = this;
-		return;
-		const element = document.getElementById( self.clientId );
 	}
 	
 	ns.IRC.prototype.getMenuOptions = function() {
@@ -1263,6 +1290,16 @@ library.view = library.view || {};
 		const el = hello.template.getElement( tmplId, conf );
 		const container = document.getElementById( self.containers.contact );
 		container.appendChild( el );
+	}
+	
+	ns.Presence.prototype.setLogoCss = function() {
+		const self = this;
+		const tmplId = 'fa-icon-logo-css-tmpl';
+		// template conf
+		const conf = {
+		};
+		self.insertLogoCss( tmplId, conf, self.roomsId );
+		self.insertLogoCss( tmplId, conf, self.contactsId );
 	}
 	
 	ns.Presence.prototype.getTitleString = function( type ) {
@@ -1340,12 +1377,16 @@ library.view = library.view || {};
 		
 	}
 	
-	ns.Presence.prototype.getMenuOptions = function() {
+	ns.Presence.prototype.getMenuOptions = function( type ) {
 		const self = this;
-		const opts = [
-			self.menuActions[ 'create-room' ],
+		let opts = [
 			self.menuActions[ 'reconnect' ],
 		];
+		if ( 'conference' === type )
+			opts.push( self.menuActions[ 'create-room' ]);
+		
+		if ( 'contact' === type )
+			;
 		
 		return opts;
 	}
