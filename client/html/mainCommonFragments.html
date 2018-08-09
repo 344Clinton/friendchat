@@ -270,8 +270,10 @@ unreadId,
 clientId,
 folditId,
 moduleTitle,
-connectionStateId,
-contactsId,
+connStateId,
+itemsId,
+activeId,
+inactiveId,
 -->
 <script id="treeroot-module-tmpl" type="text/html">
     <div id="<%= clientId %>" class="module bar column BorderBottom">
@@ -286,14 +288,14 @@ contactsId,
             <div class="actions group row fortify">
                 <div class="foldit-status">
                 </div>
-                <div id="<%= connectionStateId %>">
+                <div id="<%= connStateId %>">
                 </div>
                 <div class="item-menu Button IconButton" title="">
                     <i class="fa fa-fw fa-ellipsis-v"></i>
                 </div>
             </div>
         </div>
-        <div id="<%= contactsId %>" class="contacts bar column">
+        <div id="<%= itemsId %>" class="contacts bar column">
             <div id="<%= activeId %>" class="active ZebraList Interactive">
             </div>
             <div class="inactive-container hidden">

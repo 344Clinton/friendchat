@@ -216,12 +216,12 @@ var hello = window.hello || {};
 	base module
 */
 (function( ns, undefined ) {
-	ns.BaseModule.prototype.setCss = function() { return; }
+	ns.BaseModule.prototype.setLogoCss = function() { return; }
 	ns.BaseModule.prototype.initFoldit = function() { return; }
-	ns.BaseModule.prototype.initStatus = function() {
+	ns.BaseModule.prototype.initConnStatus = function() {
 		const self = this;
-		self.connectionState = new library.component.StatusIndicator({
-			containerId : self.connectionState,
+		const conf = {
+			containerId : null,
 			type        : 'icon',
 			cssClass    : 'fa-circle',
 			statusMap   : {
@@ -231,7 +231,17 @@ var hello = window.hello || {};
 				connecting : 'Notify',
 				error      : 'Alert',
 			},
-		});
+		};
+		
+		if ( self.roomsConnState ) {
+			conf.containerId = self.roomsConnState;
+			self.roomsConnState = new library.component.StatusIndicator( conf );
+		}
+		
+		if ( self.contactsConnState ) {
+			conf.containerId = self.contactsConnState;
+			self.contactsConnState = new library.component.StatusIndicator( conf );
+		}
 	}
 	
 })( library.view );
@@ -243,14 +253,14 @@ var hello = window.hello || {};
 	ns.Presence.prototype.setCss = function() { return; }
 	ns.Presence.prototype.initFoldit = function() { return; }
 	
-	ns.Presence.prototype.buildRooms = function() {
+	ns.Presence.prototype.buildRoomsElement = function() {
 		const self = this;
 		const title = self.getTitleString( 'conference' );
 		const tmplId = 'simple-presence-rooms-tmpl';
 		const conf = {
 			roomsId      : self.roomsId,
 			title        : title,
-			connStateId  : self.roomConnState,
+			connStateId  : self.roomsConnState,
 			itemsId      : self.roomItemsId,
 		};
 		const el = hello.template.getElement(  tmplId, conf );
@@ -258,14 +268,14 @@ var hello = window.hello || {};
 		cont.appendChild( el );
 	}
 	
-	ns.Presence.prototype.buildContacts = function() {
+	ns.Presence.prototype.buildContactsElement = function() {
 		const self = this;
 		const title = self.getTitleString( 'conference' );
 		const tmplId = 'simple-presence-rooms-tmpl';
 		const conf = {
 			roomsId      : self.contactsId,
 			title        : title,
-			connStateId  : self.contactConnState,
+			connStateId  : self.contactsConnState,
 			itemsId      : self.contactItemsId,
 		};
 		const el = hello.template.getElement(  tmplId, conf );
@@ -289,11 +299,11 @@ var hello = window.hello || {};
 			},
 		};
 		
-		conf.containerId = self.roomConnState;
-		self.roomConnState = new library.component.StatusIndicator( conf );
+		conf.containerId = self.roomsConnState;
+		self.roomsConnState = new library.component.StatusIndicator( conf );
 		
-		conf.containerId = self.contactConnState;
-		self.contactConnState = new library.component.StatusIndicator( conf );
+		conf.containerId = self.contactsConnState;
+		self.contactsConnState = new library.component.StatusIndicator( conf );
 	}
 	
 })( library.view );
@@ -308,17 +318,18 @@ var hello = window.hello || {};
 		return 'Contacts';
 	}
 	
-	ns.Treeroot.prototype.buildElement = function() {
+	ns.Treeroot.prototype.buildContactsElement = function() {
 		const self = this;
+		console.log( 'buildContactsElement', self.contactsId );
 		const title = self.getTitleString();
 		const tmplId = 'simple-treeroot-module-tmpl';
 		const conf = {
-			clientId          : self.clientId,
-			moduleTitle       : title,
-			connectionStateId : self.connectionState,
-			contactsId        : self.contactsId,
-			activeId          : self.activeId,
-			inactiveId        : self.inactiveId,
+			clientId    : self.contactsId,
+			moduleTitle : title,
+			connStateId : self.contactsConnState,
+			itemsId     : self.contactItemsId,
+			activeId    : self.activeId,
+			inactiveId  : self.inactiveId,
 		};
 		
 		const el = hello.template.getElement( tmplId, conf );

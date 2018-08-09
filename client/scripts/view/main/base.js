@@ -219,22 +219,26 @@ library.view = library.view || {};
 		library.component.EventEmitter.call( self, eventSink );
 		self.clientId = conf.module.clientId;
 		self.id = self.clientId;
-		self.containers = conf.containers
+		self.containers = conf.containers; // holds the element id for
+		// conference rooms and contacts in .conference and .contact
+		// Append module element to the relevant element
 		self.type = conf.module.type;
 		self.module = conf.module;
 		self.identity = conf.identity;
 		self.tmplId = conf.tmplId || '';
 		
 		self.mod = null;
-		self.rooms = {};
-		self.contacts = {};
-		self.contactsId = friendUP.tool.uid( 'contacts' );
-		self.connectionState = friendUP.tool.uid( 'connectionIndicator' );
+		self.errorStrings = null;
 		self.updateMap = null;
-		self.contactsFoldit = friendUP.tool.uid( 'foldit' );
+		self.queryMap = null;
+		self.infoMap = null;
+		self.serverMessage = null;
 		
-		//self.optionMenu = friendUP.tool.uid( 'options' );
-		self.options = {};
+		self.roomsId = null;
+		self.rooms = {};
+		self.contactsId = null;
+		self.contacts = {};
+		
 		
 		self.initBaseModule( conf.parentView );
 		
@@ -247,6 +251,8 @@ library.view = library.view || {};
 	
 	// Public
 	
+	
+	
 	// Implement in module
 	
 	/*
@@ -258,6 +264,7 @@ library.view = library.view || {};
 	*/
 	ns.BaseModule.prototype.getMenuOptions = function() {
 		const self = this;
+		throw new Error( 'BaseModule.getMenuOptions - implement for module' );
 		return [
 			self.menuActions[ 'settings' ],
 		];
@@ -266,15 +273,24 @@ library.view = library.view || {};
 	/*
 	setLogo
 	
-	Does nothing for normal UI. For advanced UI it sets the logo
-	in the head of the module
+	Does nothing for normal UI. For advanced UI it sets the css for
+	the logo in the head of the module
+	
+	for the icon logo, set the icon in html, then use this to set special css for it
+	for the image logo, pass the url and it will be set as background image
 	
 	*/
 	ns.BaseModule.prototype.setLogo = function() {
 		const self = this;
+		throw new Error( 'BaseModule.setLogo - implement for module' );
+		// Two options exist, feel free to add more. These are defined in main.html
+		const tmplId = 'fa-icon-logo-css-tmpl' || 'image-logo-css-tmpl';
+		// template conf
 		const conf = {
+			logoPath  : 'url.to/thing.jpg',
 		};
-		self.setLogoCss( conf );
+		self.setLogoCss( tmplId, conf, self.roomsId );
+		self.setLogoCss( tmplId, conf, self.contactsId );
 	}
 	
 	/*
@@ -286,12 +302,48 @@ library.view = library.view || {};
 	Use with base module template, implement in module of custom templates
 	where the selector no longer fits
 	*/
-	ns.BaseModule.prototype.updateTitle = function() {
+	ns.BaseModule.prototype.updateTitle = function( type ) {
 		const self = this;
-		const title = self.getTitleString();
-		const parentElement = document.getElementById( self.clientId );
+		const title = self.getTitleString( type );
+		let elId = null;
+		if ( 'conference' === type )
+			elId = self.roomsId;
+		else
+			elId = self.contactsId;
+		
+		if( !elId || !title )
+			return;
+		
+		const parentElement = document.getElementById( elId );
 		const titleElement = parentElement.querySelector( '.module-title' );
 		titleElement.textContent = title;
+	}
+	
+	/*
+	getTitleString
+	type - 'conference' | 'contact'
+	
+	title to be set in module head, either for conference rooms or
+	contacts ui element
+	
+	( below is the old default that doesnt care about type )
+	*/
+	ns.BaseModule.prototype.getTitleString = function( type ) {
+		const self = this;
+		let title = '';
+		let modName = '';
+		if ( self.identity )
+			title = self.identity.name || '';
+		
+		if ( self.module )
+			modName = self.module.name || '';
+		
+		if ( title.length && modName.length )
+			title += ( ' - ' + modName );
+		else
+			title = modName;
+		
+		return title;
 	}
 	
 	/*
@@ -328,10 +380,144 @@ library.view = library.view || {};
 		}
 	}
 	
+	/*
+	buildElement
+	
+	*/
+	ns.BaseModule.prototype.buildElement = function() {
+		const self = this;
+		self.roomsId = friendUP.tool.uid( 'rooms' );
+		self.roomsFoldit = friendUP.tool.uid( 'fold' );
+		self.roomsConnState = friendUP.tool.uid( 'conn' );
+		self.roomItemsId = friendUP.tool.uid( 'items' );
+		
+		self.contactsId = friendUP.tool.uid( 'contact' );
+		self.contactsFoldit = friendUP.tool.uid( 'fold' );
+		self.contactsConnState = friendUP.tool.uid( 'conn' );
+		self.contactItemsId = friendUP.tool.uid( 'items' );
+		
+		self.buildRoomsElement();
+		self.buildContactsElement();
+	}
+	
+	/*
+	buildContact - example
+	called by BaseModule.initBaseModule, each module must implement.
+	
+	This shows building for a contact list, the module may
+	probably want to split it into separate conference rooms
+	and contacts parts.
+	
+	self.roomsId
+	self.contactsId
+	are expected and should be used. Leave as null if the module does not
+	have either rooms or contacts
+	
+	self.contactsFoldit
+	self.contactsConnState
+	are expected. They are initialy an Id, but will be overwritten by BaseModule.initFoldit and
+	BaseModule.initConnStatus to reference the ui widget.
+	
+	*/
+	ns.BaseModule.prototype.buildContactsElement = function() {
+		const self = this;
+		throw new Error( 'BaseModule.buildContactsElement - implement in module' );
+		const tmplId = self.tmplId || 'base-module-tmpl';
+		const conf = {
+			clientId    : self.contactsId,
+			folditId    : self.contactsFoldit,
+			moduleTitle : self.module.name,
+			connStateId : self.contactsConnState,
+			itemsId     : self.contactItemsId,
+		};
+		
+		const element = hello.template.getElement( tmplId, conf );
+		const container = document.getElementById( self.containers.contacts );
+		container.appendChild( element );
+	}
+	
+	/*
+	buildRoomsElement
+	
+	example for a module that doesnt have rooms. Another option would
+	be to override .buildElement
+	*/
+	ns.BaseModule.prototype.buildRoomsElement = function() {
+		const self = this;
+		throw new Error( 'BaseModule.buildRoomsElement - implement in module' );
+		self.roomsId = null;
+		self.roomsFoldit = null;
+		self.roomsConnState = null;
+		self.roomItemsId = null;
+	}
+	
+	/*
+	bindModuleEvents
+	
+	module events sent from the app to view pop out of the self.mod object
+	*/
+	ns.BaseModule.prototype.bindModuleEvents = function() {
+		const self = this;
+		throw new Error( 'BaseModule.bindModuleEvents - implement in module' );
+		
+		self.mod.on( 'event-name', handler );
+		function handler( event ) {}
+	}
+	
+	
+	/*
+	bindUI
+	
+	called after buildElement, implement for module if needed
+	*/
+	ns.BaseModule.prototype.bindUI = function() {
+		const self = this;
+	}
+	
+	/*
+	closeChildren
+	
+	Called when the module is closed. Implement in module if required
+	Must close and release all resources held by conference rooms and contacts
+	*/
+	ns.BaseModule.prototype.closeChildren = function() {
+		const self = this;
+		if ( self.rooms ) {
+			close( self.rooms );
+			delete self.rooms;
+		}
+		
+		if ( self.contacts ) {
+			close( self.contacts );
+			delete self.contacts;
+		}
+		
+		function close( items ) {
+			let ids = Object.keys( items );
+			ids.forEach( id => {
+				let item = items[ id ];
+				item.close();
+			});
+		}
+	}
+	
+	/*
+	close
+	
+	Implement for module. Must release all resources held by the module
+	Must call closeBaseModule
+	*/
+	ns.BaseModule.prototype.close = function() {
+		const self = this;
+		throw new Error( 'BaseModule.close - implement for module' );
+		
+		self.closeBaseModule();
+	}
+	
 	// Private
 	
 	ns.BaseModule.prototype.initBaseModule = function( parentConn ) {
-		var self = this;
+		const self = this;
 		if ( !self.identity ) {
 			self.identity = {
 				name : '---',
@@ -342,9 +528,10 @@ library.view = library.view || {};
 		self.buildElement();
 		self.setCss();
 		self.initFoldit();
-		self.initStatus();
+		self.initConnStatus();
 		self.bindMenuButton();
 		self.updateTitle();
+		self.bindUI();
 		
 		self.menuActions = new library.component.MiniMenuActions();
 		
@@ -354,19 +541,17 @@ library.view = library.view || {};
 			type : self.clientId,
 		});
 		self.mod.on( 'connection', connection );
-		self.mod.on( 'remove', removeContact );
 		self.mod.on( 'update', applyUpdate );
 		self.mod.on( 'query', handleQuery );
 		self.mod.on( 'info', handleInfo );
 		
 		function connection( e ) { self.connectionHandler( e ); }
-		function removeContact( e ) { self.removeContact( e ); }
 		function applyUpdate( e ) { self.updateHandler( e ); }
 		function handleQuery( e ) { self.queryHandler( e ); }
 		function handleInfo( e ) { self.infoHandler( e ); }
 		
 		self.updateMap = {
-			'module' : updateModule,
+			'module'   : updateModule,
 			'identity' : updateIdentity,
 		};
 		
@@ -411,105 +596,115 @@ library.view = library.view || {};
 		
 	}
 	
-	ns.BaseModule.prototype.showMenu = function() {
+	ns.BaseModule.prototype.showMenu = function( type ) {
 		const self = this;
-		const opts = self.getMenuOptions();
-		if ( !opts || !opts.length )
+		if ( !type )
+			return;
+		
+		let menuEl = null;
+		if ( 'conference' === type )
+			menuEl = self.roomsMenu;
+		
+		if ( 'contact' === type )
+			menuEl = self.contactsMenu;
+		
+		if ( !menuEl )
+			return;
+		
+		const options = self.getMenuOptions( type );
+		if ( !options || !options.length )
 			return;
 		
 		new library.component.MiniMenu(
 			hello.template,
-			self.itemMenu,
+			menuEl,
 			'hello',
-			opts,
-			onSelect
+			options,
+			onSelect,
 		);
 		
 		function onSelect( action ) {
-			self.handleAction( action );
+			self.handleAction( action, type );
 		}
 	}
 	
 	ns.BaseModule.prototype.handleAction = function( type, data ) {
 		const self = this;
-		self.send({
+		const action = {
 			type : type,
 			data : data,
-		});
-	}
-	
-	// this is an example implementation, modules probably need 
-	// something specific to their own needs
-	ns.BaseModule.prototype.buildElement = function() {
-		var self = this;
-		var tmplId = self.tmplId || 'base-module-tmpl';
-		var conf = {
-			clientId          : self.clientId,
-			folditId          : self.contactsFoldit,
-			moduleTitle       : self.module.name,
-			connectionStateId : self.connectionState,
-			optionId          : self.optionMenu,
-			contactsId        : self.contactsId,
 		};
-		
-		var element = hello.template.getElement( tmplId, conf );
-		var container = document.getElementById( self.containers[ self.moduleType ]);
-		container.appendChild( element );
+		self.send( action );
 	}
 	
 	ns.BaseModule.prototype.initFoldit = function() {
-		var self = this;
-		self.contactsFoldit = new library.component.Foldit({
-			folderId : self.contactsFoldit,
-			foldeeId : self.contactsId
-		});
+		const self = this;
+		if ( self.roomsFoldit )
+			self.roomsFoldit = new library.component.Foldit({
+				folderId : self.roomsFoldit,
+				foldeeId : self.roomItemsId,
+			});
+		
+		if ( self.contactsFoldit )
+			self.contactsFoldit = new library.component.Foldit({
+				folderId : self.contactsFoldit,
+				foldeeId : self.contactItemsId,
+			});
 	}
 	
-	ns.BaseModule.prototype.initStatus = function() {
-		var self = this;
-		self.connectionState = new library.component.StatusIndicator({
-			containerId : self.connectionState,
-			type      : 'icon',
-			cssClass  : 'fa-circle-o',
-			statusMap : {
-				offline    : 'Off'    ,
-				online     : 'On'     ,
+	ns.BaseModule.prototype.initConnStatus = function() {
+		const self = this;
+		const conf = {
+			containerId : null,
+			type        : 'icon',
+			cssClass    : 'fa-circle-o',
+			statusMap   : {
+				offline    : 'Off',
+				online     : 'On',
 				open       : 'Warning',
-				connecting : 'Notify' ,
-				error      : 'Alert'  ,
+				connecting : 'Notify',
+				error      : 'Alert',
 			},
-		});
+		};
+		
+		if ( self.roomsConnState ) {
+			conf.containerId = self.roomsConnState;
+			self.roomsConnState = new library.component.StatusIndicator( conf );
+		}
+		
+		if ( self.contactsConnState ) {
+			conf.containerId = self.contactsConnState;
+			self.contactsConnState = new library.component.StatusIndicator( conf );
+		}
 	}
 	
-	ns.BaseModule.prototype.setLogoCss = function( conf, tmplId ) {
-		var self = this;
+	ns.BaseModule.prototype.setLogoCss = function( tmplId, conf, elementId ) {
+		const self = this;
 		tmplId = tmplId || 'fa-icon-logo-css-tmpl';
-		conf.moduleId = self.clientId;
-		
-		var cssId = self.getCssId();
-		var exists = document.getElementById( cssId );
+		elementId = elementId || self.clientId;
+		conf.moduleId = elementId;
+		const cssId = self.getLogoCssId( elementId );
+		const exists = document.getElementById( cssId );
 		if ( exists )
-			self.removeCss();
+			self.removeLogoCss( elementId );
 		
-		var cssElement = hello.template.getElement( tmplId, conf );
+		const cssElement = hello.template.getElement( tmplId, conf );
 		document.head.appendChild( cssElement );
 	}
 	
-	ns.BaseModule.prototype.removeCss = function() {
-		var self = this;
-		var cssId = self.getCssId();
-		var cssElement = document.getElementById( cssId );
-		if ( !cssElement ) {
-			console.log( 'moduleView.removeCss - could not', { id : cssId, self : self });
+	ns.BaseModule.prototype.removeLogoCss = function( elementId ) {
+		const self = this;
+		const cssId = self.getLogoCssId( elementId );
+		const cssElement = document.getElementById( cssId );
+		if ( !cssElement )
 			return;
-		}
 		
 		cssElement.parentNode.removeChild( cssElement );
 	}
 	
-	ns.BaseModule.prototype.getCssId = function() {
-		var self = this;
-		var id = self.clientId + '-module-css';
+	ns.BaseModule.prototype.getLogoCssId = function( elementId ) {
+		const self = this;
+		const id = elementId + '-logo-css';
 		return id;
 	}
 	
@@ -526,11 +721,6 @@ library.view = library.view || {};
 		self.serverMessage.show( element );
 	}
 	
-	ns.BaseModule.prototype.clearInfo = function() {
-		var self = this;
-		self.serverMessage.hide();
-	}
-	
 	ns.BaseModule.prototype.showMessage = function( message ) {
 		var self = this;
 		var id = friendUP.tool.uid( 'message' );
@@ -542,12 +732,19 @@ library.view = library.view || {};
 		self.serverMessage.show( element );
 	}
 	
-	ns.BaseModule.prototype.connectionHandler = function( state ) {
+	ns.BaseModule.prototype.clearInfo = function() {
 		var self = this;
-		if ( !self.connectionState )
-			throw new Error( 'connectionState is not defined, use library.component.' );
+		self.serverMessage.hide();
+	}
+	
+	ns.BaseModule.prototype.connectionHandler = function( state ) {
+		const self = this;
+		console.log( 'Presence.connectionHandler', state );
+		if ( self.roomsConnState )
+			self.roomsConnState.set( state.type );
 		
-		self.connectionState.set( state.type );
+		if ( self.contactsConnState )
+			self.contactsConnState.set( state.type );
 	}
 	
 	ns.BaseModule.prototype.updateHandler = function( update ) {
@@ -557,7 +754,7 @@ library.view = library.view || {};
 		
 		var handler = self.updateMap[ update.type ];
 		if ( !handler ) {
-			console.log( 'moduleView.updateHandler - no handler for', update );
+			console.log( 'BaseModule.updateHandler - no handler for', update );
 			return;
 		}
 		
@@ -738,81 +935,30 @@ library.view = library.view || {};
 		handler( info.data );
 	}
 	
-	ns.BaseModule.prototype.getTitleString = function() {
-		var self = this;
-		var title = '';
-		var modName = '';
-		if ( self.identity )
-			title = self.identity.name || '';
-		
-		if ( self.module )
-			modName = self.module.name || '';
-		
-		if ( title.length && modName.length )
-			title += ( ' - ' + modName );
-		else
-			title = modName;
-		
-		return title;
-	}
-	
-	ns.BaseModule.prototype.removeContact = function( clientId ) {
-		var self = this;
-		var contact = self.contacts[ clientId ];
-		if ( !contact ) {
-			console.log( 'no contact for', { id : clientId, contacts : self.contacts });
-			return;
-		}
-		
-		self.emit( 'remove', clientId );
-		contact.close();
-		delete self.contacts[ clientId ];
-	}
-	
-	ns.BaseModule.prototype.optionSettings = function() {
-		var self = this;
-		self.send({
-			type : 'settings',
-		});
-	}
-	
-	ns.BaseModule.prototype.optionReconnect = function() {
-		var self = this;
-		self.send({
-			type : 'reconnect',
-		});
-	}
-	
-	ns.BaseModule.prototype.optionDisconnect = function( msg ) {
-		var self = this;
-		self.send({
-			type : 'disconnect',
-		});
-	}
-	
-	ns.BaseModule.prototype.optionRemove = function() {
-		var self = this;
-		self.send({
-			type : 'remove',
-		});
-	}
-	
 	ns.BaseModule.prototype.send = function( msg ) {
 		var self = this;
 		self.mod.sendMessage( msg );
 	}
 	
-	ns.BaseModule.prototype.close = function() {
-		var self = this;
+	ns.BaseModule.prototype.closeBaseModule = function() {
+		const self = this;
+		self.closeChildren();
 		self.mod.close();
-		self.removeCss();
-		//main.menu.remove( self.menuId );
+		if ( self.serverMessage )
+			self.serverMessage.close();
 		
-		var element = document.getElementById( self.clientId );
+		self.removeLogoCss( self.roomsId );
+		self.removeLogoCss( self.contactsId );
+		
+		const element = document.getElementById( self.clientId );
 		element.parentNode.removeChild( element );
 		self.closeEventEmitter();
 		
 		delete self.menuActions;
+		delete self.serverMessage;
+		delete self.updateMap;
+		delete self.queryMap;
+		delete self.infoMap;
 	}
 	
 })( library.view );

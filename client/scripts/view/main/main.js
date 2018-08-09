@@ -326,33 +326,41 @@ library.view = library.view || {};
 		//self.showInitializing();
 	}
 	
-	ns.Treeroot.prototype.buildElement = function() {
+	ns.Treeroot.prototype.buildRoomsElement = function() {
 		const self = this;
-		console.log( 'Treeroot.buildElement', self.containerId );
+		self.roomsId = null;
+		self.roomsFoldit = null;
+		self.roomsConnState = null;
+		self.roomItemsId = null;
+	}
+	
+	ns.Treeroot.prototype.buildContactsElement = function() {
+		const self = this;
+		console.log( 'Treeroot.buildContactsElement', self.contactsId );
 		const tmplId = 'treeroot-module-tmpl';
 		const title = self.getTitleString();
 		const conf = {
-			clientId : self.clientId,
-			folditId : self.contactsFoldit,
-			moduleTitle : title,
-			connectionStateId : self.connectionState,
-			contactsId : self.contactsId,
-			activeId : self.activeId,
+			clientId         : self.contactsId,
+			folditId         : self.contactsFoldit,
+			moduleTitle      : title,
+			connStateId      : self.contactsConnState,
+			itemsId          : self.contactItemsId,
+			activeId         : self.activeId,
 			inactiveFolditId : self.inactiveFolditId,
-			inactiveId : self.inactiveId,
+			inactiveId       : self.inactiveId,
 		};
 		const element = hello.template.getElement( tmplId, conf );
 		const container = document.getElementById( self.containers.contact );
 		container.appendChild( element );
 	}
 	
-	ns.Treeroot.prototype.setCss = function() {
+	ns.Treeroot.prototype.setLogo = function() {
 		var self = this;
 		var logoPath = 'https://treeroot.org/upload/images-master/logo.png';
 		var conf = {
 			logoPath : logoPath,
 		};
-		self.addCss( conf, 'image-logo-css-tmpl' );
+		self.setLogoCss( conf, 'image-logo-css-tmpl' );
 	}
 	
 	ns.Treeroot.prototype.initFoldit = function() {
@@ -531,7 +539,7 @@ library.view = library.view || {};
 		var msg = {
 			type : 'scienceregister',
 		};
-		self.view.sendMessage( msg );
+		self.mod.sendMessage( msg );
 	}
 	
 	ns.Treeroot.prototype.showCreateAccount = function() {
@@ -539,7 +547,7 @@ library.view = library.view || {};
 		var registerEvent = {
 			type : 'register',
 		};
-		self.view.sendMessage( registerEvent );
+		self.mod.sendMessage( registerEvent );
 	}
 	
 	ns.Treeroot.prototype.saveSetting = function( type, value ) {
@@ -557,16 +565,17 @@ library.view = library.view || {};
 	
 	ns.Treeroot.prototype.bind = function() {
 		var self = this;
-		var element = document.getElementById( self.clientId );
+		console.log( 'bind', self.contactsId );
+		var element = document.getElementById( self.contactsId );
 		self.inactiveContainer = element.querySelector( '.inactive-container' );
 		self.inactiveStats = self.inactiveContainer.querySelector( '.inactive-stats' );
 	}
 	
 	ns.Treeroot.prototype.bindView = function() {
 		var self = this;
-		self.view.on( 'account', updateAccount );
-		self.view.on( 'contact', handleContact );
-		self.view.on( 'subscriber', addSubscriber );
+		self.mod.on( 'account', updateAccount );
+		self.mod.on( 'contact', handleContact );
+		self.mod.on( 'subscriber', addSubscriber );
 		
 		function updateModule( msg ) { self.updateModule( msg ); }
 		function updateAccount( msg ) { self.updateAccount( msg ); }
@@ -852,7 +861,7 @@ library.view = library.view || {};
 		var self = this;
 		e.preventDefault();
 		e.stopPropagation();
-		self.view.sendMessage({
+		self.mod.sendMessage({
 			type : 'subscribe',
 		});
 	}
@@ -1205,9 +1214,6 @@ library.view = library.view || {};
 		const self = this;
 		library.view.BaseModule.call( self, conf );
 		
-		self.rooms = {};
-		// self.contacts is set by BaseModule
-		
 		self.init();
 	}
 	
@@ -1227,32 +1233,16 @@ library.view = library.view || {};
 		function loginInvalid( e ) { self.loginInvalid( e ); }
 		
 		self.bindModuleEvents();
-		self.bindUI();
 	}
 	
-	ns.Presence.prototype.buildElement = function() {
-		const self = this;
-		self.roomsId = friendUP.tool.uid( 'rooms' );
-		self.roomConnState = friendUP.tool.uid( 'conn' );
-		self.roomItemsId = friendUP.tool.uid( 'items' );
-		
-		self.contactsId = friendUP.tool.uid( 'contacts' );
-		self.contactConnState = friendUP.tool.uid( 'conn' );
-		self.contactItemsId = friendUP.tool.uid( 'items' );
-		
-		self.buildRooms();
-		self.buildContacts();
-	}
-	
-	ns.Presence.prototype.buildRooms = function() {
+	ns.Presence.prototype.buildRoomsElement = function() {
 		const self = this;
 		const tmplId = 'presence-rooms-tmpl';
-		self.roomFoldit = friendUP.tool.uid( 'fold' );
 		const conf = {
 			roomsId      : self.roomsId,
-			folditId     : self.roomFoldit,
+			folditId     : self.roomsFoldit,
 			title        : self.getTitleString( 'conference' ),
-			connStateId  : self.roomConnState,
+			connStateId  : self.roomsConnState,
 			itemsId      : self.roomItemsId,
 		};
 		const el = hello.template.getElement( tmplId, conf );
@@ -1260,56 +1250,19 @@ library.view = library.view || {};
 		container.appendChild( el );
 	}
 	
-	ns.Presence.prototype.buildContacts = function() {
+	ns.Presence.prototype.buildContactsElement = function() {
 		const self = this;
 		const tmplId = 'presence-rooms-tmpl';
-		self.contactFoldit = friendUP.tool.uid( 'fold' );
 		const conf = {
 			roomsId     : self.contactsId,
-			folditId     : self.contactFoldit,
+			folditId     : self.contactsFoldit,
 			title        : self.getTitleString( 'contact' ),
-			connStateId  : self.contactConnState,
+			connStateId  : self.contactsConnState,
 			itemsId      : self.contactItemsId,
 		};
 		const el = hello.template.getElement( tmplId, conf );
 		const container = document.getElementById( self.containers.contact );
 		container.appendChild( el );
-	}
-	
-	ns.Presence.prototype.initStatus = function() {
-		const self = this;
-		console.log( 'Presence.initStatus' );
-		const conf = {
-			containerId : null,
-			type        : 'icon',
-			cssClass    : 'fa-circle-o',
-			statusMap   : {
-				offline    : 'Off',
-				online     : 'On',
-				open       : 'Warning',
-				connecting : 'Notify',
-				error      : 'Alert',
-			},
-		};
-		
-		conf.containerId = self.roomConnState;
-		self.roomConnState = new library.component.StatusIndicator( conf );
-		
-		conf.containerId = self.contactConnState;
-		self.contactConnState = new library.component.StatusIndicator( conf );
-	}
-	
-	ns.Presence.prototype.initFoldit = function() {
-		var self = this;
-		self.roomFoldit = new library.component.Foldit({
-			folderId : self.roomFoldit,
-			foldeeId : self.roomItemsId,
-		});
-		
-		self.contactFoldit = new library.component.Foldit({
-			folderId : self.contactFoldit,
-			foldeeId : self.contactItemsId,
-		});
 	}
 	
 	ns.Presence.prototype.getTitleString = function( type ) {
@@ -1335,31 +1288,6 @@ library.view = library.view || {};
 		function contactRemove( e ) { self.handleContactRemove( e ); }
 	}
 	
-	ns.Presence.prototype.showMenu = function( type ) {
-		const self = this;
-		let menuEl = null;
-		if ( 'conference' === type )
-			menuEl = self.roomsMenu;
-		else
-			menuEl = self.contactsMenu;
-		
-		const options = self.getMenuOptions( type );
-		if ( !options || !options.length )
-			return;
-		
-		new library.component.MiniMenu(
-			hello.template,
-			menuEl,
-			'hello',
-			options,
-			onSelect,
-		);
-		
-		function onSelect( action ) {
-			self.handleAction( action, type );
-		}
-	}
-	
 	ns.Presence.prototype.updateTitle = function() {
 		const self = this;
 		update( self.roomsId, 'conference' );
@@ -1376,18 +1304,9 @@ library.view = library.view || {};
 		}
 	}
 	
-	ns.Presence.prototype.connectionHandler = function( state ) {
-		const self = this;
-		console.log( 'Presence.connectionHandler', state );
-		if ( self.roomConnState )
-			self.roomConnState.set( state.type );
-		
-		if ( self.contactConnState )
-			self.contactConnState.set( state.type );
-	}
-	
 	ns.Presence.prototype.handleRoomJoin = function( conf ) {
 		const self = this;
+		console.log( 'handleRoomJoin', self.roomItemsId );
 		const roomConf = {
 			containerId : self.roomItemsId,
 			parentView  : window.View,
@@ -1421,31 +1340,6 @@ library.view = library.view || {};
 		
 	}
 	
-	
-	ns.Presence.prototype.bindUI = function() {
-		const self = this;
-		return;
-		const el = document.getElementById( self.clientId );
-		const createBtn = el.querySelector( '.actions .create-room' );
-		const reconnectBtn = el.querySelector( '.actions .reconnect' );
-		createBtn.addEventListener( 'click', createClick, false );
-		reconnectBtn.addEventListener( 'click', reconnectClick, false );
-		
-		function createClick( e ) {
-			e.stopPropagation();
-			e.preventDefault();
-			self.send({
-				type : 'create',
-			});
-		}
-		
-		function reconnectClick( e ) {
-			e.stopPropagation();
-			e.preventDefault();
-			self.optionReconnect();
-		}
-	}
-	
 	ns.Presence.prototype.getMenuOptions = function() {
 		const self = this;
 		const opts = [
@@ -1454,61 +1348,6 @@ library.view = library.view || {};
 		];
 		
 		return opts;
-	}
-	
-	ns.Presence.prototype.addMenu = function() {
-		var self = this;
-		var roomId = friendUP.tool.uid( 'room' );
-		var roomItem = {
-			type   : 'item',
-			id     : roomId,
-			name   : View.i18n('i18n_create_room'),
-			faIcon : 'fa-users',
-		}
-		
-		var settingsId = friendUP.tool.uid( 'settings' );
-		var settingsItem = {
-			type   : 'item',
-			id     : settingsId,
-			name   : View.i18n('i18n_settings'),
-			faIcon : 'fa-cog',
-		};
-		
-		var reconnectId = friendUP.tool.uid( 'reconnect' );
-		var reconnectItem = {
-			type   : 'item',
-			id     : reconnectId,
-			name   : View.i18n('i18n_reconnect'),
-			faIcon : 'fa-refresh',
-		};
-		
-		self.menuId = friendUP.tool.uid( 'menu' );
-		var liveFolder = {
-			type   : 'folder',
-			id     : self.menuId,
-			name   : 'Presence',
-			faIcon : 'fa-user-circle',
-			items  : [
-				roomItem,
-				//settingsItem,
-				reconnectItem,
-			],
-		};
-		
-		main.menu.add( liveFolder, 'modules' );
-		main.menu.on( roomId, createRoom );
-		main.menu.on( settingsId, showSettings );
-		main.menu.on( reconnectId, reconnect );
-		
-		function createRoom( e ) {
-			self.send({ type : 'create' });
-		}
-		function showSettings( e ) {
-			self.optionSettings();
-		}
-		function reconnect( e ) {
-			self.optionReconnect();
-		}
 	}
 	
 	ns.Presence.prototype.askForAccount = function( event ) {
@@ -1565,6 +1404,11 @@ library.view = library.view || {};
 	ns.Presence.prototype.loginInvalid = function( event ) {
 		var self = this;
 		console.log( 'loginInvalid', event );
+	}
+	
+	ns.Presence.prototype.close = function() {
+		const self = this;
+		self.closeBaseModule();
 	}
 	
 })( library.view );
@@ -1649,6 +1493,7 @@ library.view = library.view || {};
 			liveStatusId : self.liveStatus,
 			msgWaitingId : self.msgWaiting,
 		};
+		console.log( 'PresenceRoom.builDelement - containerId', self.containerId );
 		var container = document.getElementById( self.containerId );
 		var el = hello.template.getElement( tmplId, conf );
 		container.appendChild( el );
