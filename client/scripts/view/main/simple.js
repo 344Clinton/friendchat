@@ -270,7 +270,7 @@ var hello = window.hello || {};
 	
 	ns.Presence.prototype.buildContactsElement = function() {
 		const self = this;
-		const title = self.getTitleString( 'conference' );
+		const title = self.getTitleString( 'contact' );
 		const tmplId = 'simple-presence-rooms-tmpl';
 		const conf = {
 			roomsId      : self.contactsId,
@@ -318,7 +318,7 @@ var hello = window.hello || {};
 	
 	ns.Treeroot.prototype.getTitleString = function() {
 		const self = this;
-		return 'Community Contacts';
+		return window.View.i18n( 'i18n_community_contacts' );
 	}
 	
 	ns.Treeroot.prototype.buildContactsElement = function() {

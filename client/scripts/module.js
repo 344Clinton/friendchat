@@ -772,7 +772,10 @@ library.module = library.module || {};
 	
 	ns.Presence.prototype.handleAccount = function( account ) {
 		const self = this;
-		console.log( 'handleAccount - SO MANY TODOS???', account );
+		console.log( 'handleAccount - SO MANY TODOS???', {
+			account : account,
+			identity : self.identity, 
+		});
 		self.account = account;
 		self.accountId = account.clientId;
 		if ( account.name !== self.identity.name )
@@ -792,10 +795,11 @@ library.module = library.module || {};
 		//self.identity.clientId = account.clientId || self.identity.clientId;
 		//self.identity.name     = account.name     || self.identity.name;
 		//self.identity.avatar   = account.avatar   || self.identity.avatar;
-		const uptd = {
-			type : 'identity',
-			data : self.identity,
+		const uid = {
+			type : 'user-id',
+			data : self.accountId,
 		};
+		self.toView( uid );
 		//self.updateView( uptd );
 	}
 	
@@ -997,13 +1001,12 @@ library.module = library.module || {};
 		room = new library.contact.PresenceRoom( roomConf );
 		self.contacts[ room.clientId ] = room;
 		conf.identity = room.identity;
-		conf.userId = room.userId;
 		
 		const addRoom = {
 			type : 'join',
 			data : conf,
 		};
-		self.view.sendMessage( addRoom );
+		self.toView( addRoom );
 		return room;
 	}
 	
@@ -2673,6 +2676,10 @@ library.module = library.module || {};
 	
 	ns.IRC.prototype.createPrivateChat = function( contact, forceOpen ) {
 		const self = this;
+		console.log( 'createPrivateChat', {
+			contact   : contact,
+			forceOpen : forceOpen,
+		});
 		var conf = {
 			moduleId   : self.clientId,
 			parentConn : self.conn,

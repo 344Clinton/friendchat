@@ -336,7 +336,6 @@ library.view = library.view || {};
 	
 	ns.Treeroot.prototype.buildContactsElement = function() {
 		const self = this;
-		console.log( 'Treeroot.buildContactsElement', self.contactsId );
 		const tmplId = 'treeroot-module-tmpl';
 		const title = self.getTitleString();
 		const conf = {
@@ -603,9 +602,10 @@ library.view = library.view || {};
 		var self = this;
 		self.serverMessage.hide();
 		var conf = {
-			contact : data,
+			contact     : data,
 			containerId : self.inactiveId,
-			parentView : window.View,
+			parentView  : window.View,
+			menuActions : self.menuActions,
 		};
 		var contact = new library.view.TreerootContact( conf );
 		self.contacts[ contact.clientId ] = contact;
@@ -617,9 +617,10 @@ library.view = library.view || {};
 		var self = this;
 		self.serverMessage.hide();
 		var conf = {
-			subscriber : subData,
+			subscriber  : subData,
 			containerId : self.activeId,
-			parentView : window.View,
+			parentView  : window.View,
+			menuActions : self.menuActions,
 		};
 		var subscriber = new library.view.Subscriber( conf );
 		self.contacts[ subscriber.clientId ] = subscriber;
@@ -917,6 +918,11 @@ library.view = library.view || {};
 		return name;
 	}
 	
+	ns.Treeroot.prototype.close = function() {
+		const self = this;
+		self.closeBaseModule();
+	}
+	
 })( library.view );
 
 
@@ -1169,9 +1175,10 @@ library.view = library.view || {};
 	ns.IRC.prototype.addPrivate = function( data ) {
 		var self = this;
 		var conf = {
+			menuActison : self.menuActions,
 			containerId : self.roomItemsId,
-			parentView : window.View,
-			contact : data,
+			parentView  : window.View,
+			contact     : data,
 		};
 		var priv = new library.view.IrcPrivate( conf );
 		self.contacts[ priv.clientId ] = priv;
@@ -1181,9 +1188,10 @@ library.view = library.view || {};
 	ns.IRC.prototype.joinChannel = function( data ) {
 		var self = this;
 		var conf = {
+			menuActions : self.menuActions,
 			containerId : self.roomItemsId,
-			parentView : window.View,
-			channel : data,
+			parentView  : window.View,
+			channel     : data,
 		};
 		var channel = new library.view.IrcChannel( conf );
 		self.contacts[ channel.clientId ] = channel;
@@ -1232,6 +1240,11 @@ library.view = library.view || {};
 		return opts;
 	}
 	
+	ns.IRC.prototype.close = function() {
+		const self = this;
+		self.closeBaseModule();
+	}
+	
 	
 })( library.view );
 
@@ -1239,8 +1252,9 @@ library.view = library.view || {};
 (function( ns, undefined ) {
 	ns.Presence = function( conf ) {
 		const self = this;
-		library.view.BaseModule.call( self, conf );
+		self.userId = conf.userId;
 		
+		library.view.BaseModule.call( self, conf );
 		self.init();
 	}
 	
@@ -1305,19 +1319,21 @@ library.view = library.view || {};
 	ns.Presence.prototype.getTitleString = function( type ) {
 		const self = this;
 		if ( 'conference' === type )
-			return 'Conference rooms';
+			return window.View.i18n( 'i18n_conference_rooms' );//'Conference rooms';
 		else
-			return 'Workgroup contacts';
+			return window.View.i18n( 'i18n_workgroup_contacts' );//'Workgroup contacts';
 	}
 	
 	ns.Presence.prototype.bindModuleEvents = function() {
 		var self = this;
+		self.mod.on( 'user-id', userId );
 		self.mod.on( 'join', joinedRoom );
 		self.mod.on( 'leave', leftRoom );
 		self.mod.on( 'contact-list', contactList );
 		self.mod.on( 'contact-add', contactAdd );
 		self.mod.on( 'contact-remove', contactRemove );
 		
+		function userId( e ) { self.userId = e; }
 		function joinedRoom( e ) { self.handleRoomJoin( e ); }
 		function leftRoom( e ) { self.handleRoomLeave( e ); }
 		function contactList( e ) { self.handleContactList( e ); }
@@ -1345,8 +1361,10 @@ library.view = library.view || {};
 		const self = this;
 		console.log( 'handleRoomJoin', self.roomItemsId );
 		const roomConf = {
+			menuActions : self.menuActions,
 			containerId : self.roomItemsId,
 			parentView  : window.View,
+			userId      : self.userId,
 			room        : conf,
 		};
 		const room = new library.view.PresenceRoom( roomConf );
@@ -1362,7 +1380,12 @@ library.view = library.view || {};
 	ns.Presence.prototype.handleContactList = function( list ) { 
 		const self = this;
 		console.log( 'handleContactList', list );
+		if ( !list || !list.length )
+			return;
 		
+		list.forEach( item => {
+			self.addContact( item );
+		});
 	}
 	
 	ns.Presence.prototype.handleContactAdd = function( contact ) { 
@@ -1375,6 +1398,18 @@ library.view = library.view || {};
 		const self = this;
 		console.log( 'handleContactRemove', clientId );
 		
+	}
+	
+	ns.Presence.prototype.addContact = function( contact ) {
+		const self = this;
+		console.log( 'addContact', contact );
+		const conf = {
+			menuActions : self.menuActions,
+			containerId : self.contactItemsId,
+			parentView  : window.View,
+			userId      : self.userId,
+			contact     : contact,
+		}
 	}
 	
 	ns.Presence.prototype.getMenuOptions = function( type ) {
@@ -1455,12 +1490,27 @@ library.view = library.view || {};
 })( library.view );
 
 (function( ns, undefined ) {
+	ns.PresenceContact = function( conf ) {
+		const self = this;
+		self.type = 'contact';
+		self.data = conf.contact;
+		self.userId = conf.userId;
+		self.userLive = false;
+		self.contactLive = false;
+		self.contactOnline = friendUP.tool.uid( 'online' );
+		
+		ns.BaseContact.call( self, conf );
+		self.init();
+	}
+})( library.view );
+
+
+(function( ns, undefined ) {
 	ns.PresenceRoom = function( conf ) {
 		var self = this;
-		self.id = conf.room.clientId;
 		self.type = 'room';
 		self.data = conf.room;
-		self.userId = conf.room.userId;
+		self.userId = conf.userId;
 		self.roomStatus = friendUP.tool.uid( 'room-status' );
 		self.liveStatus = friendUP.tool.uid( 'live-status' );
 		self.msgWaiting = friendUP.tool.uid( 'msg-waiting' );

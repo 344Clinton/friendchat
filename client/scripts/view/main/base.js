@@ -23,13 +23,6 @@ var hello = window.hello || {};
 
 library.view = library.view || {};
 
-// BaseView - NYI - maybe never?
-(function( ns, undefined ) {
-	ns.BaseView = function() {
-		
-	}
-})( library.view );
-
 // BASE CONTACT
 (function( ns, undefined ) {
 	ns.BaseContact = function( conf ) {
@@ -42,6 +35,7 @@ library.view = library.view || {};
 		self.id = self.clientId;
 		self.identity = self.data.identity;
 		self.containerId = conf.containerId;
+		self.menuActions = conf.menuActions;
 		
 		self.view = null;
 		
@@ -114,7 +108,6 @@ library.view = library.view || {};
 	
 	ns.BaseContact.prototype.baseContactInit = function( parentView ) {
 		var self = this;
-		self.menuActions = new library.component.MiniMenuActions();
 		self.view = new library.component.SubView({
 			parent : parentView,
 			type : self.clientId,
