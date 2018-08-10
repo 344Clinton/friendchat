@@ -1,5 +1,3 @@
-'use strict';
-
 /*©agpl*************************************************************************
 *                                                                              *
 * This file is part of FRIEND UNIFYING PLATFORM.                               *
@@ -19,6 +17,7 @@
 *                                                                              *
 *****************************************************************************©*/
 
+'use strict';
 var library = window.library || {};
 var friendUP = window.friendUP || {};
 var hello = window.hello || {};
@@ -1400,16 +1399,19 @@ library.view = library.view || {};
 		
 	}
 	
-	ns.Presence.prototype.addContact = function( contact ) {
+	ns.Presence.prototype.addContact = function( identity ) {
 		const self = this;
-		console.log( 'addContact', contact );
+		console.log( 'addContact', indentity );
 		const conf = {
 			menuActions : self.menuActions,
 			containerId : self.contactItemsId,
 			parentView  : window.View,
 			userId      : self.userId,
-			contact     : contact,
+			contact     : identity,
 		}
+		
+		const contact = new library.view.PresenceContact( conf );
+		self.contacts[ identity.clientId ] = contact;
 	}
 	
 	ns.Presence.prototype.getMenuOptions = function( type ) {
@@ -1502,6 +1504,28 @@ library.view = library.view || {};
 		ns.BaseContact.call( self, conf );
 		self.init();
 	}
+	
+	ns.PresenceContact.prototype.init = function() {
+		const self = this;
+		console.log( 'PresenceContact.init' );
+	}
+	
+	ns.PresenceContact.prototype.buildElement = function() {
+		const self = this;
+		const tmplId = 'presence-contact-tmpl';
+		const conf = {
+			clientId     : self.clientId,
+			name         : self.identity.name,
+			roomStatusId : self.roomStatus,
+			liveStatusId : self.liveStatus,
+			msgWaitingId : self.msgWaiting,
+		};
+		console.log( 'PresenceContact.builDelement - containerId', self.containerId );
+		const container = document.getElementById( self.containerId );
+		const el = hello.template.getElement( tmplId, conf );
+		container.appendChild( el );
+	}
+	
 })( library.view );
 
 

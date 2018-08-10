@@ -742,6 +742,30 @@ msgWaitingId,
 </div>
 </script>
 
+
+<!-- PRESENCE CONTACT
+clientId,
+name,
+msgWaitingId,
+-->
+<script id="presence-room-tmpl" type="text/html">
+<div id="<%= clientId %>" class="contact group row MousePointer">
+    <div class="avatar fortify">
+    </div>
+    <div class="contact-height-dummy fortify">
+    </div>
+    <div class="contact-name expand">
+        <%= name %>
+    </div>
+    <div id="<%= msgWaitingId %>">
+    </div>
+    <div class="item-menu Button IconButton fortify center-child">
+        <i class="fa fa-fw fa-ellipsis-v"></i>
+    </div>
+</div>
+</script>
+
+
 <!-- PRESENCE QUERY HAS ACCOUNT
 id,
 createId,
