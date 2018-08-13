@@ -487,6 +487,7 @@ library.module = library.module || {};
 		
 		self.type = 'presence';
 		self.roomRequests = {};
+		self.contactList = [];
 		self.init();
 	}
 	

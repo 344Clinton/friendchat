@@ -228,9 +228,13 @@ library.view = library.view || {};
 		self.serverMessage = null;
 		
 		self.roomsId = null;
+		self.roomItemsId = null;
 		self.rooms = {};
+		self.roomIds = [];
 		self.contactsId = null;
+		self.contactItemsId = null;
 		self.contacts = {};
+		self.contactIds = [];
 		
 		
 		self.initBaseModule( conf.parentView );

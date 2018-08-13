@@ -1376,7 +1376,7 @@ library.view = library.view || {};
 		self.emit( 'remove', roomId );
 	}
 	
-	ns.Presence.prototype.handleContactList = function( list ) { 
+	ns.Presence.prototype.handleContactList = function( list ) {
 		const self = this;
 		console.log( 'handleContactList', list );
 		if ( !list || !list.length )
@@ -1387,31 +1387,55 @@ library.view = library.view || {};
 		});
 	}
 	
-	ns.Presence.prototype.handleContactAdd = function( contact ) { 
+	ns.Presence.prototype.handleContactAdd = function( contact ) {
 		const self = this;
 		console.log( 'handleContactAdd', contact );
+		self.addContact( contact );
 		
 	}
 	
-	ns.Presence.prototype.handleContactRemove = function( clientId ) { 
+	ns.Presence.prototype.handleContactRemove = function( clientId ) {
 		const self = this;
 		console.log( 'handleContactRemove', clientId );
+		const contact = self.contacts[ clientId ];
+		if ( !contact )
+			return;
 		
+		delete self.contacts[ clientId ];
+		self.contactIds = Object.keys( self.contacts );
+		contact.close();
 	}
 	
 	ns.Presence.prototype.addContact = function( identity ) {
 		const self = this;
-		console.log( 'addContact', indentity );
+		console.log( 'addContact', {
+			identity : identity,
+			userId   : self.userId,
+		});
+		const cId = identity.clientId;
+		if ( cId === self.userId ) {
+			console.log( 'Presence.addContact - is self, not adding' );
+			return;
+		}
+		
+		if ( self.contacts[ cId ]) {
+			console.log( 'Presence.addContact - already added', cId );
+			return;
+		}
+		
 		const conf = {
 			menuActions : self.menuActions,
 			containerId : self.contactItemsId,
 			parentView  : window.View,
 			userId      : self.userId,
-			contact     : identity,
-		}
-		
+			contact     : {
+				clientId : cId,
+				identity : identity,
+			},
+		};
 		const contact = new library.view.PresenceContact( conf );
-		self.contacts[ identity.clientId ] = contact;
+		self.contacts[ cId ] = contact;
+		self.contactIds.push( cId );
 	}
 	
 	ns.Presence.prototype.getMenuOptions = function( type ) {
@@ -1504,6 +1528,8 @@ library.view = library.view || {};
 		ns.BaseContact.call( self, conf );
 		self.init();
 	}
+	
+	ns.PresenceContact.prototype = Object.create( ns.BaseContact.prototype );
 	
 	ns.PresenceContact.prototype.init = function() {
 		const self = this;
