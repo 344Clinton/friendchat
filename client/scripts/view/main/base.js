@@ -37,9 +37,9 @@ library.view = library.view || {};
 		self.containerId = conf.containerId;
 		self.menuActions = conf.menuActions;
 		
-		self.view = null;
+		self.conn = null;
 		
-		self.baseContactInit( conf.parentView );
+		self.baseContactInit( conf.conn );
 		
 		function eventSink() {
 			//console.log( 'BaseContact, eventSink', arguments );
@@ -100,24 +100,28 @@ library.view = library.view || {};
 		});
 	}
 	
-	// Private
-	
 	ns.BaseContact.prototype.getMenuOptions = function() {
 		throw new Error( 'BaseContact.getMenuOptions - implement in extension' );
 	}
 	
-	ns.BaseContact.prototype.baseContactInit = function( parentView ) {
+	// Private
+	
+	ns.BaseContact.prototype.baseContactInit = function( parentConn ) {
 		var self = this;
-		self.view = new library.component.SubView({
-			parent : parentView,
-			type : self.clientId,
-		});
-		
-		self.view.on( 'identity', updateIdentity );
-		function updateIdentity( msg ) { self.updateIdentity( msg ); }
-		
+		self.setupConn( parentConn );
 		self.buildElement(); // must be defined for each contact
 		self.bindItem();
+	}
+	
+	ns.BaseContact.prototype.setupConn = function( parentConn ) {
+		const self = this;
+		self.conn = new library.component.EventNode(
+			self.clientId,
+			parentConn,
+		);
+		
+		self.conn.on( 'identity', updateIdentity );
+		function updateIdentity( msg ) { self.updateIdentity( msg ); }
 	}
 	
 	ns.BaseContact.prototype.updateIdentity = function( id ) {
@@ -187,12 +191,12 @@ library.view = library.view || {};
 	
 	ns.BaseContact.prototype.send = function( msg ) {
 		var self = this;
-		self.view.sendMessage( msg );
+		self.conn.send( msg );
 	}
 	
 	ns.BaseContact.prototype.close = function() {
 		var self = this;
-		self.view.close();
+		self.conn.close();
 		
 		var element = document.getElementById( self.clientId );
 		element.parentNode.removeChild( element );
@@ -210,6 +214,7 @@ library.view = library.view || {};
 		
 		var self = this;
 		library.component.EventEmitter.call( self, eventSink );
+		
 		self.clientId = conf.module.clientId;
 		self.id = self.clientId;
 		self.containers = conf.containers; // holds the element id for
@@ -552,10 +557,10 @@ library.view = library.view || {};
 		self.menuActions = new library.component.MiniMenuActions();
 		
 		// app.module interface
-		self.mod = new library.component.SubView({
-			parent : parentConn,
-			type : self.clientId,
-		});
+		self.mod = new library.component.EventNode(
+			self.clientId,
+			parentConn,
+		);
 		self.mod.on( 'connection', connection );
 		self.mod.on( 'update', applyUpdate );
 		self.mod.on( 'query', handleQuery );
@@ -751,7 +756,7 @@ library.view = library.view || {};
 	
 	ns.BaseModule.prototype.connectionHandler = function( state ) {
 		const self = this;
-		console.log( 'Presence.connectionHandler', state );
+		console.log( 'BaseModule.connectionHandler', state );
 		if ( self.roomsConnState )
 			self.roomsConnState.set( state.type );
 		

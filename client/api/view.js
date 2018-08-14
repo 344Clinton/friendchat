@@ -30,11 +30,24 @@ var friend = window.friend || {};
 		if ( !( this instanceof ns.ViewEvent ))
 			return new ns.ViewEvent();
 		
-		var self = this;
+		const self = this;
+		window.EventEmitter.call( self, eventSink );
+		
 		self.listener = {};
 		
 		self.eventInit();
+		
+		function eventSink( type, data ) {
+			/*
+			console.log( 'View.eventSink', {
+				type : type,
+				data : data,
+			});
+			*/
+		}
 	}
+	
+	ns.ViewEvent.prototype = Object.create( window.EventEmitter.prototype );
 	
 	ns.ViewEvent.prototype.eventInit = function() {
 		var self = this;
@@ -106,14 +119,9 @@ var friend = window.friend || {};
 	
 	ns.ViewEvent.prototype.viewEvent = function( msg ) {
 		var self = this;
-		var handler = self.listener[ msg.type ];
-		if ( !handler ) {
-			self.receiveMessage( msg );
-			return;
-		}
-		
-		handler( msg.data );
+		self.emit( msg.type, msg.data );
 	}
+	
 	
 	ns.ViewEvent.prototype.notify = function( msg ) {
 		var self = this;
@@ -126,6 +134,7 @@ var friend = window.friend || {};
 		handler( msg );
 	}
 	
+	/*
 	ns.ViewEvent.prototype.on = function( event, handler ) {
 		var self = this;
 		self.listener[ event ] = handler;
@@ -141,6 +150,8 @@ var friend = window.friend || {};
 		var self = this;
 		self.listener = {};
 	}
+	
+	*/
 	
 })( api );
 
@@ -817,7 +828,6 @@ body .View.Active.IconWindow ::-webkit-scrollbar-thumb
 		
 		self.sendBase( msg );
 	}
-	
 	ns.View.prototype.send = ns.View.prototype.sendMessage;
 	
 	ns.View.prototype.sendViewEvent = function( msg ) {
@@ -833,15 +843,6 @@ body .View.Active.IconWindow ::-webkit-scrollbar-thumb
 		
 		const msgString = friendUP.tool.stringify( msg );
 		window.parent.postMessage( msgString, self.parentOrigin );
-	}
-	
-	ns.View.prototype.receiveMessage = function( msg ) {
-		var self = this;
-		/*
-		console.log( 'View.receiveMessage - '
-			+ ' provide your own implementation of this function'
-			+ ' to receive unhandled messages in your view', msg );
-		*/
 	}
 	
 	// Get a translated string

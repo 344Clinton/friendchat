@@ -623,8 +623,10 @@ library.module = library.module || {};
 		
 		// view
 		self.view.on( 'create-room', createRoom );
+		self.view.on( 'contact', contact );
 		
 		function createRoom( e ) { self.handleCreateRoom( e ); }
+		function contact( e ) { self.handleContactAction( e ); }
 		
 		// lets go
 		self.setup();
@@ -908,6 +910,16 @@ library.module = library.module || {};
 	ns.Presence.prototype.handleCreateRoom = function() {
 		const self = this;
 		self.createRoom();
+	}
+	
+	ns.Presence.prototype.handleContactAction = function( action ) {
+		const self = this;
+		console.log( 'handleContactAction', action );
+		const event = {
+			type : 'contact',
+			data : action,
+		};
+		self.toAccount( event );
 	}
 	
 	// to server

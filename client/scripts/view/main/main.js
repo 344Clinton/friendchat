@@ -91,7 +91,7 @@ library.view = library.view || {};
 	
 	ns.Subscriber.prototype.acceptSub = function( e ) {
 		var self = this;
-		self.view.sendMessage({
+		self.conn.send({
 			type : 'allow',
 		});
 		self.showSpinner();
@@ -99,7 +99,7 @@ library.view = library.view || {};
 	
 	ns.Subscriber.prototype.denySub = function( e ) {
 		var self = this;
-		self.view.sendMessage({
+		self.conn.send({
 			type : 'deny',
 		});
 		self.showSpinner();
@@ -107,7 +107,7 @@ library.view = library.view || {};
 	
 	ns.Subscriber.prototype.cancelSub = function( e ) {
 		var self = this;
-		self.view.sendMessage({
+		self.conn.send({
 			type : 'cancel'
 		});
 		self.showSpinner();
@@ -239,9 +239,9 @@ library.view = library.view || {};
 	
 	ns.TreerootContact.prototype.bindView = function() {
 		var self = this;
-		self.view.on( 'presence', presence );
-		self.view.on( 'message', message );
-		self.view.on( 'msg-waiting', messageWaiting );
+		self.conn.on( 'presence', presence );
+		self.conn.on( 'message', message );
+		self.conn.on( 'msg-waiting', messageWaiting );
 		
 		function presence( state ) {
 			self.presence.set( state );
@@ -603,7 +603,7 @@ library.view = library.view || {};
 		var conf = {
 			contact     : data,
 			containerId : self.inactiveId,
-			parentView  : window.View,
+			conn        : window.View,
 			menuActions : self.menuActions,
 		};
 		var contact = new library.view.TreerootContact( conf );
@@ -618,7 +618,7 @@ library.view = library.view || {};
 		var conf = {
 			subscriber  : subData,
 			containerId : self.activeId,
-			parentView  : window.View,
+			conn        : window.View,
 			menuActions : self.menuActions,
 		};
 		var subscriber = new library.view.Subscriber( conf );
@@ -980,8 +980,8 @@ library.view = library.view || {};
 	
 	ns.IrcChannel.prototype.bindView = function() {
 		var self = this;
-		self.view.on( 'highlight', highlight );
-		self.view.on( 'msg-waiting', messageWaiting );
+		self.conn.on( 'highlight', highlight );
+		self.conn.on( 'msg-waiting', messageWaiting );
 		
 		function highlight( msg ) { self.setHighlight( msg ); }
 		function messageWaiting( state ) { self.messageWaiting.set( state.isWaiting ? 'true' : 'false' ); }
@@ -1075,8 +1075,8 @@ library.view = library.view || {};
 	
 	ns.IrcPrivate.prototype.bindView = function() {
 		var self = this;
-		self.view.on( 'msg-waiting', messageWaiting );
-		self.view.on( 'highlight', handleHighlight );
+		self.conn.on( 'msg-waiting', messageWaiting );
+		self.conn.on( 'highlight', handleHighlight );
 		
 		function messageWaiting( state ) {
 			let isWaiting = state.isWaiting;
@@ -1176,7 +1176,7 @@ library.view = library.view || {};
 		var conf = {
 			menuActison : self.menuActions,
 			containerId : self.roomItemsId,
-			parentView  : window.View,
+			conn        : window.View,
 			contact     : data,
 		};
 		var priv = new library.view.IrcPrivate( conf );
@@ -1189,7 +1189,7 @@ library.view = library.view || {};
 		var conf = {
 			menuActions : self.menuActions,
 			containerId : self.roomItemsId,
-			parentView  : window.View,
+			conn        : window.View,
 			channel     : data,
 		};
 		var channel = new library.view.IrcChannel( conf );
@@ -1362,7 +1362,7 @@ library.view = library.view || {};
 		const roomConf = {
 			menuActions : self.menuActions,
 			containerId : self.roomItemsId,
-			parentView  : window.View,
+			conn        : window.View,
 			userId      : self.userId,
 			room        : conf,
 		};
@@ -1426,7 +1426,7 @@ library.view = library.view || {};
 		const conf = {
 			menuActions : self.menuActions,
 			containerId : self.contactItemsId,
-			parentView  : window.View,
+			conn        : self.mod,
 			userId      : self.userId,
 			contact     : {
 				clientId : cId,
@@ -1531,6 +1531,14 @@ library.view = library.view || {};
 	
 	ns.PresenceContact.prototype = Object.create( ns.BaseContact.prototype );
 	
+	ns.PresenceContact.prototype.setupConn = function( parentConn ) {
+		const self = this;
+		self.conn = new library.component.EventNode(
+			'contact',
+			parentConn,
+		);
+	}
+	
 	ns.PresenceContact.prototype.init = function() {
 		const self = this;
 		console.log( 'PresenceContact.init' );
@@ -1552,8 +1560,27 @@ library.view = library.view || {};
 		container.appendChild( el );
 	}
 	
+	ns.PresenceContact.prototype.getMenuOptions = function() {
+		const self = this;
+		const opts = [
+			self.menuActions[ 'open-chat' ],
+		];
+		return opts;
+	}
+	
+	ns.PresenceContact.prototype.handleAction = function( action, data ) {
+		const self = this;
+		const event = {
+			type : action,
+			data : {
+				clientId : self.clientId,
+				data     : data,
+			},
+		};
+		self.send( event );
+	}
+	
 })( library.view );
-
 
 (function( ns, undefined ) {
 	ns.PresenceRoom = function( conf ) {
@@ -1756,12 +1783,12 @@ library.view = library.view || {};
 	
 	ns.PresenceRoom.prototype.bindView = function() {
 		var self = this;
-		self.view.on( 'init', init );
-		self.view.on( 'auth', auth );
-		self.view.on( 'persistent', persistent );
-		self.view.on( 'message', message );
-		self.view.on( 'msg-waiting', msgWaiting );
-		self.view.on( 'users', users );
+		self.conn.on( 'init', init );
+		self.conn.on( 'auth', auth );
+		self.conn.on( 'persistent', persistent );
+		self.conn.on( 'message', message );
+		self.conn.on( 'msg-waiting', msgWaiting );
+		self.conn.on( 'users', users );
 		
 		self.bindLive();
 		
@@ -1855,7 +1882,10 @@ library.view = library.view || {};
 	
 	ns.PresenceRoom.prototype.bindLive = function() {
 		const self = this;
-		self.live = new library.component.EventNode( 'live', self.view );
+		self.live = new library.component.EventNode(
+			'live',
+			self.conn
+		);
 		self.live.on( 'user-join', userJoin );
 		self.live.on( 'user-leave', userLeave );
 		self.live.on( 'peers', peers );
