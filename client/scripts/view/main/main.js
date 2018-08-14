@@ -545,7 +545,7 @@ library.view = library.view || {};
 		var msg = {
 			type : 'scienceregister',
 		};
-		self.mod.sendMessage( msg );
+		self.mod.send( msg );
 	}
 	
 	ns.Treeroot.prototype.showCreateAccount = function() {
@@ -553,7 +553,7 @@ library.view = library.view || {};
 		var registerEvent = {
 			type : 'register',
 		};
-		self.mod.sendMessage( registerEvent );
+		self.mod.send( registerEvent );
 	}
 	
 	ns.Treeroot.prototype.saveSetting = function( type, value ) {
@@ -870,7 +870,7 @@ library.view = library.view || {};
 		var self = this;
 		e.preventDefault();
 		e.stopPropagation();
-		self.mod.sendMessage({
+		self.mod.send({
 			type : 'subscribe',
 		});
 	}
@@ -1358,7 +1358,13 @@ library.view = library.view || {};
 	
 	ns.Presence.prototype.handleRoomJoin = function( conf ) {
 		const self = this;
-		console.log( 'handleRoomJoin', self.roomItemsId );
+		console.log( 'handleRoomJoin', conf );
+		const cId = conf.clientId;
+		if ( self.rooms[ cId ]) {
+			console.log( 'lets not add', cId );
+			return;
+		}
+		
 		const roomConf = {
 			menuActions : self.menuActions,
 			containerId : self.roomItemsId,
@@ -1367,7 +1373,7 @@ library.view = library.view || {};
 			room        : conf,
 		};
 		const room = new library.view.PresenceRoom( roomConf );
-		self.rooms[ room.clientId ] = room;
+		self.rooms[ cId ] = room;
 		self.emit( 'add', room );
 	}
 	

@@ -954,7 +954,7 @@ library.view = library.view || {};
 	
 	ns.BaseModule.prototype.send = function( msg ) {
 		var self = this;
-		self.mod.sendMessage( msg );
+		self.mod.send( msg );
 	}
 	
 	ns.BaseModule.prototype.closeBaseModule = function() {
