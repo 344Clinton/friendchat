@@ -41,12 +41,21 @@ library.contact = library.contact || {};
 		self.live = null;
 		self.chatCrypts = {};
 		self.encryptMessages = false;
+		self.lastMessage = self.data.lastMessage;
 		
 		self.contactInit( conf.parentConn, conf.parentView );
 	}
 	
+	// Public
+	
+	ns.Contact.prototype.getLastMessage = function() {
+		const self = this;
+		return self.lastMessage || null;
+	}
+	
+	// Private
 	ns.Contact.prototype.contactInit = function( parentConn, parentView ) {
-		var self = this;
+		const self = this;
 		console.log( 'contactInit', self.clientId );
 		if ( parentConn )
 			self.setupConn( parentConn );
@@ -63,7 +72,6 @@ library.contact = library.contact || {};
 		
 		function startLive( event, from, msg ) { self.startLive( event, from, msg ); }
 		function addCalendarEvent( event, from ) { self.addCalendarEvent( event, from ); }
-		
 		
 		self.view = new library.component.SubView({
 			parent : parentView,
@@ -132,6 +140,7 @@ library.contact = library.contact || {};
 	
 	ns.Contact.prototype.onChatMessage = function( msg ) {
 		var self = this;
+		self.recentMessage( msg.message, msg.from, msg.time );
 		if ( self.chatView )
 			self.whenChatOpen( msg );
 		else
@@ -142,7 +151,6 @@ library.contact = library.contact || {};
 		var self = this;
 		if ( hello.account.settings.popupChat === true ) {
 			api.Say( 'Message received' );
-			self.recentMessage( msg.message, msg.from, msg.time );
 			self.startChat(); // contact must implement
 			return;
 		}
@@ -151,12 +159,11 @@ library.contact = library.contact || {};
 			return;
 		
 		hello.playMsgAlert();
-		self.messageWaiting( true, msg.message, msg.from );
+		self.messageWaiting( true, msg.message, msg.from, msg.time );
 	}
 	
 	ns.Contact.prototype.whenChatOpen = function( msg ) {
 		var self = this;
-		self.recentMessage( msg.message, msg.from, msg.time );
 		if ( !msg.from )
 			return;
 		
@@ -283,6 +290,8 @@ library.contact = library.contact || {};
 	
 	ns.Contact.prototype.recentMessage = function( message, from, time ) {
 		const self = this;
+		const intercept = self.checkIntercept( message );
+		console.log( 'intercept', intercept );
 		const msg = {
 			type : 'message',
 			data : {
@@ -618,6 +627,11 @@ library.contact = library.contact || {};
 		self.inviteToServer( getInv );
 	}
 	
+	ns.PresenceRoom.prototype.getLastMessage = function() {
+		const self = this;
+		return null;
+	}
+	
 	ns.PresenceRoom.prototype.close = function() {
 		var self = this;
 		if ( self.live )
@@ -818,6 +832,7 @@ library.contact = library.contact || {};
 		self.persistent = state.persistent;
 		self.guestAvatar = state.guestAvatar;
 		self.identity.name = state.name;
+		self.lastMessage = state.lastMessage || null;
 		self.users = state.users;
 		self.peers = state.peers;
 		
@@ -825,17 +840,18 @@ library.contact = library.contact || {};
 		const viewUpdate = {
 			type : 'init',
 			data : {
-				isOwner    : self.userId === self.ownerId,
-				isAdmin    : user.admin,
-				isAuthed   : user.authed,
-				persistent : self.persistent,
-				name       : self.identity.name,
+				isOwner     : self.userId === self.ownerId,
+				isAdmin     : user.admin,
+				isAuthed    : user.authed,
+				persistent  : self.persistent,
+				name        : self.identity.name,
 			},
 		};
 		self.toView( viewUpdate );
 		
 		self.updateViewUsers();
 		self.updateIdentities();
+		self.updateLastMessage();
 		
 		// update main view with # of peers in a live session
 		const uptdPeers = {
@@ -859,6 +875,16 @@ library.contact = library.contact || {};
 		function getSelf() {
 			return self.users[ self.userId ];
 		}
+	}
+	
+	ns.PresenceRoom.prototype.updateLastMessage = function() {
+		const self = this;
+		if ( !self.lastMessage )
+			return;
+		
+		let lm = self.lastMessage.data;
+		let from = self.resolveMessageName( lm );
+		self.recentMessage( lm.message, from, lm.time );
 	}
 	
 	ns.PresenceRoom.prototype.handlePersistent = function( event ) {
@@ -1214,34 +1240,34 @@ library.contact = library.contact || {};
 	
 	ns.PresenceRoom.prototype.onMessage = function( msg ) {
 		const self = this;
-		const from = getFrom( msg.fromId );
+		const from = self.resolveMessageName( msg );
+		self.recentMessage( msg.message, from, msg.time );
 		
-		// dont if from self
-		if ( msg.fromId === self.userId ) {
-			self.recentMessage( msg.message, from, msg.time );
-			return;
-		}
+		if ( !self.chatView )
+			self.messageWaiting( true, msg.message, from, msg.time );
+	}
+	
+	ns.PresenceRoom.prototype.resolveMessageName = function( msg ) {
+		const self = this;
+		let name;
+		if ( msg.fromId )
+			name = self.resolveName( msg.fromId );
+		else
+			name = 'Guest > ' + msg.name;
 		
-		// dont if chat or live is open
-		if ( self.chatView || self.live ) {
-			self.recentMessage( msg.message, from, msg.time );
-			return;
-		}
+		return name;
+	}
+	
+	ns.PresenceRoom.prototype.resolveName = function( accId ) {
+		const self = this;
+		const user = self.identities[ accId ];
+		if ( accId === self.userId )
+			return null;
 		
-		// show msg bubble in main view
-		self.messageWaiting( true, msg.message, from, msg.time );
-		
-		function getFrom( id ) {
-			const user = self.identities[ id ];
-			if ( id === self.userId )
-				return null;
-			
-			if ( user )
-				return user.name;
-			else
-				return '>';
-			
-		}
+		if ( user )
+			return user.name;
+		else
+			return false;
 	}
 	
 	ns.PresenceRoom.prototype.setRequest = function( callback ) {
@@ -1666,6 +1692,7 @@ library.contact = library.contact || {};
 	
 	ns.TreerootContact.prototype.init = function() {
 		var self = this;
+		self.parseLastMessage();
 		self.bindView();
 		self.setupDormant();
 		self.conn.release( 'message' );
@@ -1684,6 +1711,19 @@ library.contact = library.contact || {};
 		function preLog( e ) { self.preprocessLog( e ); }
 		function addChatEncrypt( e ) { self.addChatEncrypt( e ); }
 		function updatePublicKey( e ) { self.updatePublicKey( e ); }
+	}
+	
+	ns.TreerootContact.prototype.parseLastMessage = function() {
+		const self = this;
+		if ( !self.lastMessage )
+			return;
+		
+		const intercept = self.checkIntercept( self.lastMessage.data.message );
+		if ( !intercept )
+			return;
+		
+		const notie = self.getInterceptNotification( self.lastMessage.data, intercept );
+		self.lastMessage.data.message = notie.message;
 	}
 	
 	ns.TreerootContact.prototype.setIdentity = function() {

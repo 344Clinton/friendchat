@@ -187,14 +187,23 @@ library.view = library.view || {};
 			statusMap   : {
 				'false'   : 'Off',
 				'true'    : 'Notify',
-				'offline' : 'Available',
 			},
 			display : '',
 		});
-		if ( self.data.unreadMessages ) {
-			self.unreadMessages = self.data.unreadMessages;
-			self.messageWaiting.setDisplay( self.data.unreadMessages );
-			self.messageWaiting.set( 'offline' );
+		if ( !!self.data.unreadMessages )
+			window.setTimeout( msgWaiting, 250 );
+		
+		function msgWaiting() {
+			const state = {
+				unread : self.data.unreadMessages,
+			};
+			if ( self.lastMessage ) {
+				const lm = self.lastMessage.data;
+				state.message = lm.message;
+				state.from = !!lm.from;
+				state.time = lm.time;
+			}
+			self.handleMessageWaiting( state );
 		}
 		
 		self.presence = new library.component.StatusIndicator({
@@ -248,15 +257,28 @@ library.view = library.view || {};
 		}
 		
 		function message( msg ) {
+			self.lastMessage = msg;
 			self.emit( 'message', msg );
 		}
 		
 		function messageWaiting( state ) {
-			let isWaiting = state.isWaiting;
-			if ( isWaiting )
-				self.unreadMessages += 1;
-			else
-				self.unreadMessages = 0;
+			self.handleMessageWaiting( state );
+		}
+	}
+	
+	ns.TreerootContact.prototype.handleMessageWaiting = function( state ) {
+		const self = this;
+			let isWaiting;
+			if ( state.unread ) {
+				isWaiting = !!state.unread;
+				self.unreadMessages = state.unread;
+			} else {
+				isWaiting = !!state.isWaiting;
+				if ( isWaiting )
+					self.unreadMessages += 1;
+				else
+					self.unreadMessages = 0;
+			}
 			
 			self.messageWaiting.set( isWaiting ? 'true' : 'false' );
 			let num = '';
@@ -264,9 +286,9 @@ library.view = library.view || {};
 				num = self.unreadMessages.toString();
 			
 			self.messageWaiting.setDisplay( num );
+			state.isWaiting = isWaiting;
 			state.unread = self.unreadMessages;
 			self.emit( 'msg-waiting', state );
-		}
 	}
 	
 })( library.view );
@@ -1327,7 +1349,7 @@ library.view = library.view || {};
 		var self = this;
 		self.mod.on( 'user-id', userId );
 		self.mod.on( 'join', joinedRoom );
-		self.mod.on( 'leave', leftRoom );
+		self.mod.on( 'remove', leftRoom );
 		self.mod.on( 'contact-list', contactList );
 		self.mod.on( 'contact-add', contactAdd );
 		self.mod.on( 'contact-remove', contactRemove );
@@ -1361,7 +1383,7 @@ library.view = library.view || {};
 		console.log( 'handleRoomJoin', conf );
 		const cId = conf.clientId;
 		if ( self.rooms[ cId ]) {
-			console.log( 'lets not add', cId );
+			console.log( 'handleRoomJoin - already added', conf );
 			return;
 		}
 		
@@ -1380,6 +1402,14 @@ library.view = library.view || {};
 	ns.Presence.prototype.handleRoomLeave = function( roomId ) {
 		const self = this;
 		self.emit( 'remove', roomId );
+		const room = self.rooms[ roomId ];
+		if ( !room ) {
+			console.log( 'handleRoomLeave - no room to leave', roomId );
+			return;
+		}
+		
+		delete self.rooms[ roomId ];
+		room.close();
 	}
 	
 	ns.Presence.prototype.handleContactList = function( list ) {
@@ -3001,7 +3031,7 @@ library.view = library.view || {};
 	ns.Main.prototype.bindView = function()
 	{
 		var self = this;
-		self.view.receiveMessage = receiveMessage;
+		//self.view.receiveMessage = receiveMessage;
 		self.view.on( 'initialize', initialize );
 		
 		function receiveMessage( e ) { self.receiveMessage( e ); }
@@ -3027,6 +3057,12 @@ library.view = library.view || {};
 		else
 			self.initMain( settings );
 		
+		self.connState = new library.component.ConnState(
+			'online-status',
+			self.view,
+			hello.template
+		);
+		
 		self.account = new library.view.Account();
 		self.module = new library.view.ModuleControl(
 			self.recent || null
@@ -3046,20 +3082,6 @@ library.view = library.view || {};
 			notificationRootId = 'notifications-head';
 		}
 		
-		/*
-		if ( settings.minimalUI )
-			self.assist = null;
-		else
-			self.assist = new library.view.AssistUI( 'assist-ui-container' );
-		*/
-		
-		/*
-		self.connState = new library.component.ConnState(
-			'online-status',
-			self.view,
-			hello.template
-		);
-		*/
 		self.notification = new library.view.Notification( notificationRootId );
 	}
 	
@@ -3196,9 +3218,9 @@ library.view = library.view || {};
 		hello.template = new friendUP.gui.TemplateManager( fragStr );
 	}
 	
-	ns.Main.prototype.receiveMessage = function( msg )
-	{
+	ns.Main.prototype.receiveMessage = function( msg ) {
 		var self = this;
+		
 	}
 	
 })( library.view );

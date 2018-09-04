@@ -276,7 +276,6 @@ library.view = library.view || {};
 		);
 		
 		function onMsgEdit( event ) {
-			console.log( 'onMsgEdit', event );
 			const edit = {
 				type : 'edit',
 				data : event,
@@ -447,7 +446,7 @@ library.view = library.view || {};
 	
 	ns.Presence.prototype.checkAutoComplete = function( e ) {
 		const self = this;
-		console.log( 'checkAutoComplete - NYI', e );
+		//console.log( 'checkAutoComplete - NYI', e );
 		return;
 		
 		var key = e.code || e.key;
@@ -1334,7 +1333,6 @@ library.view = library.view || {};
 		if ( !event || !event.msgId )
 			return;
 		
-		console.log( 'MsgBuilder.update', event );
 		let update = event.message;
 		let parsed = null;
 		if ( self.parser )
@@ -1353,7 +1351,6 @@ library.view = library.view || {};
 	
 	ns.MsgBuilder.prototype.editMessage = function( itemId ) {
 		const self = this;
-		console.log( 'editMessage', itemId );
 		const el = document.getElementById( itemId );
 		if ( el.isEditing )
 			return;
@@ -1371,7 +1368,6 @@ library.view = library.view || {};
 		const msgEl = el.querySelector( '.msg-container .str' );
 		const sysEl = el.querySelector( '.system-container' );
 		const currMsg = msgEl.textContent;
-		console.log( 'editMessage - message', currMsg );
 		const multiId = friendUP.tool.uid( 'edit' );
 		const editConf = {
 			multiId : multiId,
@@ -1391,7 +1387,6 @@ library.view = library.view || {};
 		edit.setValue( currMsg );
 		
 		function onSubmit( newMsg ) {
-			console.log( 'onSubmit', newMsg );
 			saveEdit( newMsg );
 			close();
 		}
@@ -1399,22 +1394,16 @@ library.view = library.view || {};
 		subBtn.addEventListener( 'click', subClick, false );
 		cancelBtn.addEventListener( 'click', cancelClick, false );
 		function subClick( e ) {
-			console.log( 'subClick', edit.getValue());
 			let newMsg = edit.getValue();
 			saveEdit( newMsg );
 			close();
 		}
 		
 		function cancelClick( e ) {
-			console.log( 'cancelClick' );
 			close();
 		}
 		
 		function saveEdit( newMsg ) {
-			console.log( 'saveEdit', {
-				newMsg  : newMsg,
-				currMsg : currMsg,
-			});
 			if ( !self.onEdit )
 				return;
 			
@@ -1463,6 +1452,11 @@ library.view = library.view || {};
 	
 	ns.MsgBuilder.prototype.close = function() {
 		const self = this;
+		if ( self.envelopeUpdate != null ) {
+			window.clearTimeout( self.envelopeUpdate );
+			delete self.envelopeUpdate;
+		}
+		
 		delete self.userId;
 		delete self.users;
 		delete self.onEdit;
@@ -1493,6 +1487,8 @@ library.view = library.view || {};
 			throw new Error( 'MsgBuilder - missing things ^^^' );
 		}
 		
+		self.startEnvelopeUpdates();
+		
 		self.eventMap = {
 			'msg'          : msg,
 			'action'       : action,
@@ -1514,6 +1510,28 @@ library.view = library.view || {};
 		function logMsg( e ) { return self.buildMsg( e ); }
 		function logAction( e ) { return self.buildAction( e ); }
 		function logNotie( e ) { return self.buildNotie( e ); }
+	}
+	
+	ns.MsgBuilder.prototype.startEnvelopeUpdates = function() {
+		const self = this;
+		if ( self.envelopeUpdate != null )
+			return;
+		
+		setNextUpdate();
+		
+		function setNextUpdate() {
+			const now = Date.now();
+			const midnight = new Date().setHours( 24, 0, 0, 0 ); // set time to nearest next midnight,
+			// ..and it returns a timestamp of that midnight
+			const timeToMidnight = midnight - now;
+			self.envelopeUpdate = window.setTimeout( update, timeToMidnight );
+		}
+		
+		function update() {
+			self.updateEnvelopeDate();
+			delete self.envelopeUpdate;
+			setNextUpdate();
+		}
 	}
 	
 	ns.MsgBuilder.prototype.exists = function( msgId ) {
@@ -1756,6 +1774,16 @@ library.view = library.view || {};
 		}
 	}
 	
+	ns.MsgBuilder.prototype.updateEnvelopeDate = function() {
+		const self = this;
+		self.envelopeOrder.forEach( eId => {
+			let env = self.envelopes[ eId ];
+			let timeStr = self.getEnvelopeDayString( env.time, env.order );
+			let timeEl = env.el.querySelector( '.envelope-date' );
+			timeEl.textContent = timeStr;
+		});
+	}
+	
 	ns.MsgBuilder.prototype.parseTime = function( timestamp ) {
 		const self = this;
 		const time = new Date( timestamp );
@@ -1785,47 +1813,16 @@ library.view = library.view || {};
 		}
 		
 		function getEnvelope( time ) {
-			const order = parseInt( getTimeStr( time ), 10 );
+			const order = self.getEnvelopeTime( time );
 			const id = 'envelope-' + order.toString();
+			const date = self.getEnvelopeDayString( time, order );
 			const envelope = {
 				id    : id,
-				date  : '',
+				date  : date,
+				time  : time,
 				order : order,
 			};
-			
-			const now = new Date();
-			const today = parseInt( getTimeStr( now ), 10 );
-			const yesterday = today - 1;
-			const isToday = order === today;
-			const isYesterday = ( order === yesterday );
-			
-			
-			if ( isToday ) {
-				envelope.date = 'Today';
-				return envelope;
-			}
-			
-			if ( isYesterday ) {
-				envelope.date = 'Yesterday';
-				return envelope;
-			}
-			
-			envelope.date = time.toLocaleDateString();
 			return envelope;
-			
-			function getTimeStr( time ) {
-				let str = ''
-				+ pad( time.getFullYear())
-				+ pad(( time.getMonth() + 1 ))
-				+ pad( time.getDate());
-				return str;
-			}
-			
-			function getYesterday( today ) {
-				const date = new Date();
-				date.setDate( today - 1 );
-				return date;
-			}
 		}
 		
 		function pad( time ) {
@@ -1834,6 +1831,41 @@ library.view = library.view || {};
 		}
 	}
 	
+	ns.MsgBuilder.prototype.getEnvelopeTime = function( time ) {
+		const self = this;
+		const timeStr = getTimeStr( time );
+		const envTime = parseInt( timeStr, 10 );
+		return envTime;
+		
+		function getTimeStr( time ) {
+			let str = ''
+			+ pad( time.getFullYear())
+			+ pad(( time.getMonth() + 1 ))
+			+ pad( time.getDate());
+			return str;
+		}
+		
+		function pad( time ) {
+			var str = time.toString();
+			return 1 !== str.length ? str : '0' + str;
+		}
+	}
+	
+	ns.MsgBuilder.prototype.getEnvelopeDayString = function( time, envelopeTime ) {
+		const self = this;
+		const now = new Date();
+		const today = self.getEnvelopeTime( now );
+		const yesterday = today - 1;
+		const isToday = ( envelopeTime === today );
+		const isYesterday = ( envelopeTime === yesterday );
+		if ( isToday )
+			return View.i18n( 'i18n_today' );
+		
+		if ( isYesterday )
+			return View.i18n( 'i18n_yesterday' );
+		
+		return time.toLocaleDateString();
+	}
 	
 })( library.component );
 

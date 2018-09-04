@@ -1114,10 +1114,10 @@ library.component = library.component || {};
 	ns.LinkExpand.prototype.init = function() {
 		var self = this;
 		self.mimeMap = {
-			'image'  : image,
-			'audio'  : audio,
-			'video'  : video,
-			'text'   : file,
+			'image'       : image,
+			'audio'       : audio,
+			'video'       : video,
+			'text'        : file,
 			'application' : file,
 		};
 		

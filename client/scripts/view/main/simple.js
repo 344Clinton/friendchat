@@ -384,6 +384,7 @@ var hello = window.hello || {};
 		
 		self.modules = {};
 		self.items = {};
+		self.itemOrder = [];
 		
 		self.init( containerId );
 	}
@@ -526,7 +527,6 @@ var hello = window.hello || {};
 		function onActive( isActive ) {
 			self.updateIsActive( iId, isActive );
 		}
-		
 	}
 	
 	ns.Recent.prototype.updateIsActive = function( itemId, isActive ) {
@@ -545,33 +545,105 @@ var hello = window.hello || {};
 		if ( itemId === self.currentFirstItem )
 			return;
 		
-		const itemEl = document.getElementById( itemId );
-		let firstEl = null;
-		if ( self.currentFirstItem )
-			firstEl = document.getElementById( self.currentFirstItem ) || null;
+		self.removeFromItemOrder( itemId );
+		const item = self.items[ itemId ];
+		if ( !item )
+			return;
 		
-		self.active.insertBefore( itemEl, firstEl );
-		self.currentFirstItem = itemId;
+		let before = null;
+		if ( isNewest( item )) {
+			before = self.itemOrder[ 1 ] || null;
+		} else
+			before = sortAndGetBeforeId( item );
 		
+		let beforeEl = null;
+		if ( before )
+			beforeEl = document.getElementById( before ) || null;
+		
+		self.active.insertBefore( item.el, beforeEl );
 		self.toggleNoRecent();
+		
+		function isNewest( item ) {
+			const current = self.items[ self.currentFirstItem ] || null;
+			if ( !current ) {
+				setFirst( item.id );
+				return true;
+			}
+			
+			const ile = item.getLastEvent();
+			const cle = current.getLastEvent();
+			if ( !ile || !ile.data.time )
+				return false;
+			
+			if ( !cle || !cle.data.time ) {
+				setFirst( item.id );
+				return true;
+			}
+			
+			if ( ile.data.time > cle.data.time ) {
+				setFirst( item.id );
+				return true;
+			} else
+				return false;
+			
+			function setFirst( id ) {
+				self.itemOrder.unshift( id );
+				self.currentFirstItem = item.id;
+			}
+		}
+		
+		function sortAndGetBeforeId( item ) {
+			let iId = item.id;
+			let ile = item.getLastEvent();
+			let itemTime;
+			if ( ile )
+				itemTime = ile.data.time || 0;
+			
+			let beforeId = null;
+			let insertIndex = null;
+			self.itemOrder.some( sortDown );
+			if ( null == insertIndex ) {
+				self.itemOrder.push( iId );
+				return null;
+			}
+			
+			self.itemOrder.splice( insertIndex, 0, iId );
+			return beforeId
+			
+			function sortDown( checkId, index ) {
+				const checkTime = getTime( checkId );
+				if ( checkTime > itemTime )
+					return false;
+				
+				beforeId = checkId;
+				insertIndex = index;
+				return true;
+			}
+			
+			function getTime( itemId ) {
+				const check = self.items[ itemId ];
+				let e = check.getLastEvent();
+				if ( !e || !e.data )
+					return 0;
+				
+				return e.data.time || 0;
+			}
+		}
 	}
 	
 	ns.Recent.prototype.toInactive = function( itemId ) {
 		const self = this;
-		const itemEl = document.getElementById( itemId );
-		self.inactive.appendChild( itemEl );
-		if ( itemId === self.currentFirstItem )
-			self.currentFirstItem = getCurrentFirstItem();
-		
+		moveToInactive( itemId );
+		self.removeFromItemOrder( itemId );
 		self.removeFromHistory( itemId );
 		self.toggleNoRecent();
 		
-		function getCurrentFirstItem() {
-			let el = self.active.firstChild;
-			if ( !el )
-				return null;
+		function moveToInactive( id ) {
+			const itemEl = document.getElementById( id );
+			if ( !itemEl )
+				return;
 			
-			return el.id;
+			self.inactive.appendChild( itemEl );
 		}
 	}
 	
@@ -587,7 +659,26 @@ var hello = window.hello || {};
 		
 		delete mod.items[ contactId ];
 		delete self.items[ item.id ];
+		self.removeFromItemOrder( item.id );
+		
 		item.close();
+	}
+	
+	ns.Recent.prototype.removeFromItemOrder = function( itemId ) {
+		const self = this;
+		self.itemOrder = self.itemOrder.filter( check => {
+			return itemId !== check;
+		});
+		
+		if ( itemId === self.currentFirstItem )
+			self.currentFirstItem = getNewFirstItem();
+		
+		function getNewFirstItem() {
+			if ( !self.itemOrder.length )
+				return null;
+			
+			return self.itemOrder[ 0 ];
+		}
 	}
 	
 	ns.Recent.prototype.checkHistory = function( itemId ) {
@@ -606,7 +697,7 @@ var hello = window.hello || {};
 		if ( !event )
 			return;
 		
-		item.setEvent( event );
+		item.setLastEvent( event );
 		self.toActive( itemId, true );
 	}
 	
@@ -716,6 +807,17 @@ var hello = window.hello || {};
 		handler( event.data );
 	}
 	
+	ns.RecentItem.prototype.setLastEvent = function( historyEvent ) {
+		const self = this;
+		if ( !self.lastEvent )
+			self.setEvent( historyEvent );
+		
+		let historyTime = historyEvent.data.time;
+		let lastTime = self.lastEvent.data.time;
+		if ( historyTime > lastTime )
+			self.setEvent( historyEvent );
+	}
+	
 	ns.RecentItem.prototype.getLastEvent = function() {
 		const self = this;
 		return self.lastEvent;
@@ -743,23 +845,13 @@ var hello = window.hello || {};
 		
 		self.source.on( 'message', message );
 		self.source.on( 'msg-waiting', msgWaiting );
-		
-		setTimeout( checkUnread, 100 );
-		function checkUnread() {
-			let unread = self.source.getUnreadMessages();
-			if ( !unread )
-				return;
-			
-			let state = {
-				isWaiting : 'true',
-				unread    : unread,
-			};
-			self.handleMsgWaiting( state );
+		const lastMessage = self.source.getLastMessage();
+		if ( lastMessage ) {
+			self.setMessage( lastMessage.data );
 		}
 		
 		function message( e ) { self.handleMessage( e ); }
 		function msgWaiting( e ) { self.handleMsgWaiting( e ); }
-		
 		
 		self.el.addEventListener( 'click', elClick, false );
 		self.menuBtn.addEventListener( 'click', menuClick, false );
@@ -826,7 +918,7 @@ var hello = window.hello || {};
 			cssClass    : 'recent-led-unread',
 			statusMap   : {
 				'false'   : 'Off',
-				'true'    : 'Available',
+				'true'    : 'Notify',
 			},
 			display : '',
 		});
@@ -850,20 +942,7 @@ var hello = window.hello || {};
 		if ( !msg || ( !msg.message && !message ))
 			return;
 		
-		self.lastEvent = {
-			type : 'message',
-			data : msg,
-		};
-		
-		const time = msg.time || Date.now();
-		const now = library.tool.getChatTime( time );
-		message = msg.message || message;
-		if ( !msg.from )
-			message =  'You: ' + message;
-		
-		self.message.textContent = message;
-		self.messageTime.textContent = now;
-		
+		self.setMessage( msg, message );
 		self.setActive( true );
 	}
 	
@@ -888,6 +967,28 @@ var hello = window.hello || {};
 		function clear() {
 			self.unread.hide();
 		}
+	}
+	
+	ns.RecentItem.prototype.setMessage = function( msg, altMessage ) {
+		const self = this;
+		if ( !msg.time )
+			msg.time = Date.now();
+		
+		if ( !msg.message )
+			msg.message = altMessage || '';
+		
+		const now = library.tool.getChatTime( msg.time );
+		let message = msg.message;
+		if ( !msg.from )
+			message =  'You: ' + message;
+		
+		self.message.textContent = message;
+		self.messageTime.textContent = now;
+		
+		self.lastEvent = {
+			type : 'message',
+			data : msg,
+		};
 	}
 	
 	ns.RecentItem.prototype.handleBodyClick = function() {
@@ -1089,6 +1190,12 @@ var hello = window.hello || {};
 		if ( !msg || !msg.message )
 			return;
 		
+		self.setMessage( msg );
+		self.setActive( true );
+	}
+	
+	ns.RecentRoom.prototype.setMessage = function( msg ) {
+		const self = this;
 		self.lastEvent = {
 			type : 'message',
 			data : msg,
@@ -1104,7 +1211,6 @@ var hello = window.hello || {};
 		self.message.textContent = msg.message;
 		self.messageTime.textContent = now;
 		
-		self.setActive( true );
 	}
 	
 	ns.RecentRoom.prototype.handleMsgWaiting = function( state ) {

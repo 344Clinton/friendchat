@@ -867,7 +867,6 @@ library.module = library.module || {};
 	
 	ns.Presence.prototype.handleJoin = function( conf ) {
 		const self = this;
-		//self.service.handle( conf );
 		if ( null == conf ) {
 			console.log( 'null room, end of room list', conf );
 			return;
@@ -883,6 +882,7 @@ library.module = library.module || {};
 	
 	ns.Presence.prototype.handleRoomClosed = function( roomId ) {
 		const self = this;
+		console.log( 'handleRoomClosed', roomId );
 		self.removeContact( roomId );
 	}
 	
@@ -999,7 +999,7 @@ library.module = library.module || {};
 		const host = library.tool.buildDestination(
 			null,
 			self.module.host,
-			self.module.port
+			self.module.port,
 		);
 		
 		conf.name = conf.name || null;
@@ -1171,7 +1171,12 @@ library.module = library.module || {};
 		};
 		
 		function getContacts( resolve, reject ) {
-			let items = Object.keys( self.contacts )
+			if ( !self.isLoggedIn ) {
+				reject( 'ERR_LOGIN' );
+				return;
+			}
+			
+			const items = Object.keys( self.contacts )
 				.map( cId => {
 					let contact = self.contacts[ cId ];
 					return build( contact, true );
@@ -1189,6 +1194,11 @@ library.module = library.module || {};
 		};
 		
 		function getAvailable( resolve, reject ) {
+			if ( !self.isLoggedIn ) {
+				reject( 'ERR_LOGIN' );
+				return;
+			}
+			
 			self.getUserList()
 				.then( usersBack )
 				.catch( usersError );
@@ -1307,7 +1317,7 @@ library.module = library.module || {};
 		};
 		
 		function contactPresence( msg ) { self.contactPresence( msg ); }
-		function addContact( data ) { self.addContact( data.contact ); }
+		function addContact( data ) { self.addContact( data ); }
 		function removeContact( data ) { self.removeContact( data.clientId ); }
 		
 		self.updateMap = {
@@ -1437,7 +1447,6 @@ library.module = library.module || {};
 		self.sendKeyEx( pubKeyEvent );
 	}
 	
-	
 	ns.Treeroot.prototype.signTempPass = function( tmpPass ) {
 		const self = this;
 		if ( !self.crypt )
@@ -1548,7 +1557,7 @@ library.module = library.module || {};
 		function idBack( identity ) {
 			var update = {
 				setting : 'login',
-				value : identity,
+				value   : identity,
 			};
 			self.saveSetting( update );
 		}
@@ -1594,8 +1603,8 @@ library.module = library.module || {};
 		self.updateAccount( data );
 		
 		data.contacts.forEach( add );
-		function add( contact ) {
-			self.addContact( contact );
+		function add( data ) {
+			self.addContact( data );
 		}
 		
 		data.subscriptions.forEach( addSub );
@@ -1779,8 +1788,10 @@ library.module = library.module || {};
 		}
 	}
 	
-	ns.Treeroot.prototype.addContact = function( contact ) {
+	ns.Treeroot.prototype.addContact = function( data ) {
 		const self = this;
+		const contact = data.contact;
+		const cState = data.cState;
 		if ( !contact ) {
 			var cIds = Object.keys( self.contacts );
 			if ( !cIds.length && !self.nullContact ) {
@@ -1790,6 +1801,9 @@ library.module = library.module || {};
 			
 			return;
 		}
+		
+		if ( cState )
+			contact.lastMessage = cState.lastMessage;
 		
 		checkAvatar( contact );
 		self.nullContact = false;
@@ -1822,6 +1836,7 @@ library.module = library.module || {};
 		var contactObj = new library.contact.TreerootContact( conf );
 		self.contacts[ contact.clientId ] = contactObj;
 		contact.identity = contactObj.identity;
+		contact.lastMessage = contactObj.getLastMessage();
 		
 		self.view.sendMessage({
 			type : 'contact',
@@ -1844,9 +1859,11 @@ library.module = library.module || {};
 	
 	ns.Treeroot.prototype.updateAccount = function( data ) {
 		const self = this;
-		if ( !data.account )
+		self.isLoggedIn = false;
+		if ( !data || !data.account )
 			return;
 		
+		self.isLoggedIn = true;
 		var account = data.account;
 		var name = account.name || self.identity.name;
 		var avatar = getAvatarPath( account.imagePath );

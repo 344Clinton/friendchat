@@ -72,7 +72,7 @@ library.view = library.view || {};
 	
 	ns.BaseContact.prototype.getLastMessage = function() {
 		const self = this;
-		return '';
+		return self.lastMessage || null;
 	}
 	
 	ns.BaseContact.prototype.openChat = function() {
@@ -109,6 +109,8 @@ library.view = library.view || {};
 	ns.BaseContact.prototype.baseContactInit = function( parentConn ) {
 		var self = this;
 		self.setupConn( parentConn );
+		self.lastMessage = self.data.lastMessage || null;
+		self.menuActions = new library.component.MiniMenuActions();
 		self.buildElement(); // must be defined for each contact
 		self.bindItem();
 	}
@@ -200,6 +202,7 @@ library.view = library.view || {};
 		
 		var element = document.getElementById( self.clientId );
 		element.parentNode.removeChild( element );
+		delete self.lastMessage;
 		self.closeEventEmitter();
 	}
 	
