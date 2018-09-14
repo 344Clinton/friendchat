@@ -37,6 +37,7 @@ library.module = library.module || {};
 		self.onremove = conf.onremove;
 		
 		self.identity = null;
+		self.rooms = {};
 		self.contacts = {};
 		self.updateMap = null;
 		self.conn = null;
@@ -488,6 +489,7 @@ library.module = library.module || {};
 		self.type = 'presence';
 		self.roomRequests = {};
 		self.contactList = [];
+		self.relations = {};
 		self.init();
 	}
 	
@@ -597,7 +599,8 @@ library.module = library.module || {};
 		self.conn.on( 'login', loginChallenge );
 		self.conn.on( 'password', passChallenge );
 		self.conn.on( 'account', handleAccount );
-		self.conn.on( 'contact-update', contactUpdate );
+		self.conn.on( 'contact-init', contactInit );
+		self.conn.on( 'contact-list', contactList );
 		self.conn.on( 'contact-add', contactAdd );
 		self.conn.on( 'contact-remove', contactRemove );
 		self.conn.on( 'identity', handleIdentity );
@@ -611,7 +614,8 @@ library.module = library.module || {};
 		function loginChallenge( e ) { self.loginChallenge( e ); }
 		function passChallenge( e ) { self.passChallenge( e ); }
 		function handleAccount( e ) { self.handleAccount( e ); }
-		function contactUpdate( e ) { self.handleContactUpdate( e ); }
+		function contactInit( e ) { self.handleContactInit( e ); }
+		function contactList( e ) { self.handleContactList( e ); }
 		function contactAdd( e ) { self.handleContactAdd( e ); }
 		function contactRemove( e ) { self.handleContactRemove( e ); }
 		function handleIdentity( e ) { self.handleIdentity( e ); }
@@ -806,11 +810,12 @@ library.module = library.module || {};
 		//self.updateView( uptd );
 	}
 	
-	ns.Presence.prototype.handleContactUpdate = function( list ) {
+	ns.Presence.prototype.handleContactInit = function( contacts ) {
 		const self = this;
-		console.log( 'presence.handleContactUpdate', list );
-		
-		self.contactList = list;
+		console.log( 'handleContactInit', contacts );
+		self.relations = contacts;
+		const ids = Object.keys( contacts );
+		const list = ids.map( id => contacts[ id ]);
 		const cList = {
 			type : 'contact-list',
 			data : list,
@@ -818,13 +823,32 @@ library.module = library.module || {};
 		self.toView( cList );
 	}
 	
-	ns.Presence.prototype.handleContactAdd = function( identity ) {
+	ns.Presence.prototype.handleContactList = function( list ) {
 		const self = this;
-		console.log( 'presence.handleContactAdd', identity );
-		self.contactList.push( identity );
+		console.log( 'presence.handleContactList', list );
+		list.forEach( add );
+		const cList = {
+			type : 'contact-list',
+			data : list,
+		};
+		self.toView( cList );
+		
+		function add( con ) {
+			self.handleContactAdd( con );
+		}
+	}
+	
+	ns.Presence.prototype.handleContactAdd = function( contact ) {
+		const self = this;
+		console.log( 'presence.handleContactAdd', contact );
+		let cId = contact.clientId;
+		if ( self.relations[ cId ])
+			return;
+		
+		self.relations[ cId ] = contact;
 		const cAdd = {
 			type : 'contact-add',
-			data : identity,
+			data : contact,
 		};
 		self.toView( cAdd );
 	}
@@ -832,9 +856,10 @@ library.module = library.module || {};
 	ns.Presence.prototype.handleContactRemove = function( clientId ) {
 		const self = this;
 		console.log( 'presence.handleContactRemove', clientId );
-		self.contactList = self.contactList
-			.filter( identity => clientId !== identity.clientId );
+		if ( !self.relations[ clientId ])
+			return;
 		
+		delete self.relations[ clientId ];
 		const cAdd = {
 			type : 'contact-remove',
 			data : clientId,
