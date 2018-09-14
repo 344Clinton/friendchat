@@ -45,7 +45,7 @@ ns.Presence = function( clientConn, clientId ) {
 	self.authBundle = null;
 	self.identity = null;
 	self.account = null;
-	self.contacts = [];
+	self.contacts = {};
 	
 	self.init();
 }
@@ -413,14 +413,14 @@ ns.Presence.prototype.handleInitialize = function( state ) {
 		self.client.on( accId, toAccount );
 		self.server.on( 'join', joined );
 		self.server.on( 'close', closed );
-		self.server.on( 'contact-list', contactList );
+		self.server.on( 'contact-update', contactUpdate );
 		self.server.on( 'contact-add', contactAdd );
 		self.server.on( 'contact-remove', contactRemove );
 		
 		function toAccount( e ) { self.server.send( e ); }
 		function joined( e ) { self.handleJoinedRoom( e ); }
 		function closed( e ) { self.handleRoomClosed( e ); }
-		function contactList( e ) { self.handleContactList( e ); }
+		function contactUpdate( e ) { self.handleContactUpdate( e ); }
 		function contactAdd( e ) { self.handleContactAdd( e ); }
 		function contactRemove( e ) { self.handleContactRemove( e ); }
 	}
@@ -535,19 +535,27 @@ ns.Presence.prototype.handleRoomClosed = function( roomId ) {
 
 // contact stuff
 
-ns.Presence.prototype.initializeContacts = function( list ) {
+ns.Presence.prototype.initializeContacts = function( contacts ) {
 	const self = this;
-	log( 'initializeContacts', list );
-	self.contacts = list;
+	log( 'initializeContacts', contacts );
+	self.contacts = contacts;
 	self.updateClientContacts();
 }
 
-ns.Presence.prototype.handleContactList = function( list ) {
+ns.Presence.prototype.handleContactUpdate = function( list ) {
 	const self = this;
-	log( 'handleContactList', list );
-	self.contacts = list;
+	log( 'handleContactUpdate', list );
+	list.forEach( add );
+	function add( con ) {
+		let cId = con.clientId;
+		if ( self.contacts[ cId ])
+			return;
+		
+		self.contacts[ cId ] = con;
+	}
+	
 	const cList = {
-		type : 'contact-list',
+		type : 'contact-update',
 		data : list,
 	};
 	self.client.send( cList );
@@ -556,7 +564,11 @@ ns.Presence.prototype.handleContactList = function( list ) {
 ns.Presence.prototype.handleContactAdd = function( identity ) {
 	const self = this;
 	log( 'handleContactAdd', identity );
-	self.contacts.push( identity );
+	const cId = identity.clientId;
+	if ( self.contacts[ cId ])
+		return;
+	
+	self.contacts[ cId ] = identity;
 	const cAdd = {
 		type : 'contact-add',
 		data : identity,
@@ -567,7 +579,7 @@ ns.Presence.prototype.handleContactAdd = function( identity ) {
 ns.Presence.prototype.handleContactRemove = function( clientId ) {
 	const self = this;
 	log( 'handleContactRemove', clientId );
-	self.contacts = self.contacts.filter( id => clientId !== id.clientId );
+	delete self.contacts[ clientId ];
 	const cRemove = {
 		type : 'contact-remove',
 		data : clientId,

@@ -597,7 +597,7 @@ library.module = library.module || {};
 		self.conn.on( 'login', loginChallenge );
 		self.conn.on( 'password', passChallenge );
 		self.conn.on( 'account', handleAccount );
-		self.conn.on( 'contact-list', contactList );
+		self.conn.on( 'contact-update', contactUpdate );
 		self.conn.on( 'contact-add', contactAdd );
 		self.conn.on( 'contact-remove', contactRemove );
 		self.conn.on( 'identity', handleIdentity );
@@ -611,7 +611,7 @@ library.module = library.module || {};
 		function loginChallenge( e ) { self.loginChallenge( e ); }
 		function passChallenge( e ) { self.passChallenge( e ); }
 		function handleAccount( e ) { self.handleAccount( e ); }
-		function contactList( e ) { self.handleContactList( e ); }
+		function contactUpdate( e ) { self.handleContactUpdate( e ); }
 		function contactAdd( e ) { self.handleContactAdd( e ); }
 		function contactRemove( e ) { self.handleContactRemove( e ); }
 		function handleIdentity( e ) { self.handleIdentity( e ); }
@@ -806,11 +806,9 @@ library.module = library.module || {};
 		//self.updateView( uptd );
 	}
 	
-	ns.Presence.prototype.handleContactList = function( list ) {
+	ns.Presence.prototype.handleContactUpdate = function( list ) {
 		const self = this;
-		console.log( 'presence.handleContactList', list );
-		if ( !list || !list.length )
-			return;
+		console.log( 'presence.handleContactUpdate', list );
 		
 		self.contactList = list;
 		const cList = {
