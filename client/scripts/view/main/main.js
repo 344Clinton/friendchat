@@ -1381,6 +1381,11 @@ library.view = library.view || {};
 	ns.Presence.prototype.handleRoomJoin = function( conf ) {
 		const self = this;
 		console.log( 'handleRoomJoin', conf );
+		if ( conf.isPrivate ) {
+			self.handleContactJoin( conf );
+			return;
+		}
+		
 		const cId = conf.clientId;
 		if ( self.rooms[ cId ]) {
 			console.log( 'handleRoomJoin - already added', conf );
@@ -1472,6 +1477,25 @@ library.view = library.view || {};
 		const contact = new library.view.PresenceContact( conf );
 		self.contacts[ cId ] = contact;
 		self.contactIds.push( cId );
+	}
+	
+	ns.Presence.prototype.handleContactJoin = function( conf ) {
+		const self = this;
+		let cId = conf.clientId;
+		if( self.contacts[ cId ])
+			self.handleContactRemove( cId );
+		
+		const roomConf = {
+			menuActions : self.menuActions,
+			containerId : self.contactItemsId,
+			conn        : window.View,
+			userId      : self.userId,
+			room        : conf,
+		};
+		const room = new library.view.PresenceRoom( roomConf );
+		self.contacts[ cId ] = room;
+		self.contactIds.push( cId );
+		self.emit( 'add', room );
 	}
 	
 	ns.Presence.prototype.getMenuOptions = function( type ) {

@@ -872,6 +872,10 @@ library.contact = library.contact || {};
 			self.joinLive( liveConf );
 		}
 		
+		console.log( 'pres room init state', state );
+		if ( state.isPrivate )
+			self.openChat();
+		
 		function getSelf() {
 			return self.users[ self.userId ];
 		}
