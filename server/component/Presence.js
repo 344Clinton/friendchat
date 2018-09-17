@@ -1,5 +1,3 @@
-'use strict';
-
 /*©agpl*************************************************************************
 *                                                                              *
 * This file is part of FRIEND UNIFYING PLATFORM.                               *
@@ -18,6 +16,8 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>.        *
 *                                                                              *
 *****************************************************************************©*/
+
+'use strict';
 
 const log = require( './Log' )( 'Presence' );
 const confLog = require( './Log' )( 'Presence.Config' );
@@ -45,6 +45,7 @@ ns.Presence = function( clientConn, clientId ) {
 	self.authBundle = null;
 	self.identity = null;
 	self.account = null;
+	self.contacts = {};
 	
 	self.init();
 }
@@ -97,6 +98,9 @@ ns.Presence.prototype.initialize = function( initConf, socketId ) {
 	
 	if ( self.account )
 		self.updateClientAccount( socketId );
+	
+	if( self.contacts && self.contacts.length )
+		self.initClientContacts( socketId );
 	
 	if ( !self.server || !self.server.connected )
 		self.connect();
@@ -252,6 +256,15 @@ ns.Presence.prototype.updateClientAccount = function( socketId ) {
 	self.client.send( account, socketId );
 }
 
+ns.Presence.prototype.initClientContacts = function( socketId ) {
+	const self = this;
+	const list = {
+		type : 'contact-init',
+		data : self.contacts,
+	};
+	self.client.send( list, socketId );
+}
+
 ns.Presence.prototype.handleAccountStage = function( event ) {
 	const self = this;
 	// general event
@@ -383,23 +396,45 @@ ns.Presence.prototype.tryLogin = function() {
 ns.Presence.prototype.handleInitialize = function( state ) {
 	var self = this;
 	// account
+	log( 'handleInitialize', state );
 	let accId = state.account.clientId;
 	if ( !self.account )
 		bindServerConn( accId )
 		
 	self.account = state.account;
+	self.contacts = state.contacts || [];
 	self.client.setState( 'online', Date.now() );
 	self.updateClientAccount();
 	
-	// rooms
+	self.initializeRooms( state.rooms );
+	self.initializeContacts( state.contacts );
 	
+	function bindServerConn( accId ) {
+		self.client.on( accId, toAccount );
+		self.server.on( 'join', joined );
+		self.server.on( 'close', closed );
+		self.server.on( 'contact-list', contactList );
+		self.server.on( 'contact-add', contactAdd );
+		self.server.on( 'contact-remove', contactRemove );
+		
+		function toAccount( e ) { self.server.send( e ); }
+		function joined( e ) { self.handleJoinedRoom( e ); }
+		function closed( e ) { self.handleRoomClosed( e ); }
+		function contactList( e ) { self.handleContactList( e ); }
+		function contactAdd( e ) { self.handleContactAdd( e ); }
+		function contactRemove( e ) { self.handleContactRemove( e ); }
+	}
+}
+
+ns.Presence.prototype.initializeRooms = function( rooms ) {
+	const self = this;
 	// check if we lost any
 	let currRooms = Object.keys( self.rooms );
 	let left = currRooms.filter( notInState );
 	left.forEach( remove );
 	
 	function notInState( rid ) {
-		let found = state.rooms.indexOf( rid );
+		let found = rooms.indexOf( rid );
 		if ( -1 === found )
 			return true;
 		else
@@ -409,21 +444,7 @@ ns.Presence.prototype.handleInitialize = function( state ) {
 	function remove( rid ) { self.handleRoomClosed( rid ); }
 	
 	// join new
-	state.rooms
-		.forEach( add );
-		
-	function add( e ) { self.handleJoinedRoom( e ); }
-	
-	//
-	function bindServerConn( accId ) {
-		self.client.on( accId, toAccount );
-		self.server.on( 'join', joined );
-		self.server.on( 'close', closed );
-		
-		function toAccount( e ) { self.server.send( e ); }
-		function joined( e ) { self.handleJoinedRoom( e ); }
-		function closed( e ) { self.handleRoomClosed( e ); }
-	}
+	rooms.forEach( room => self.handleJoinedRoom( room ));
 }
 
 // room things
@@ -483,7 +504,11 @@ ns.Presence.prototype.handleRoomToClientEvent = function( event, roomId ) {
 		self.rooms[ roomId ].name = event.data.name;
 	}
 	
-	self.client.send( event, null, roomId );
+	const wrap = {
+		type : roomId,
+		data : event,
+	};
+	self.client.send( wrap, null );
 }
 
 ns.Presence.prototype.handleRoomToServerEvent = function( event, clientId, roomId ) {
@@ -506,6 +531,64 @@ ns.Presence.prototype.handleRoomClosed = function( roomId ) {
 		data : roomId,
 	};
 	self.client.send( closed );
+}
+
+// contact stuff
+
+ns.Presence.prototype.initializeContacts = function( contacts ) {
+	const self = this;
+	log( 'initializeContacts', contacts );
+	self.contacts = {};
+	let ids = Object.keys( contacts );
+	ids.forEach( id => {
+		self.contacts[ id ] = contacts[ id ];
+	});
+	self.initClientContacts();
+}
+
+ns.Presence.prototype.handleContactList = function( list ) {
+	const self = this;
+	log( 'handleContactList', list );
+	list.forEach( add );
+	function add( con ) {
+		let cId = con.clientId;
+		if ( self.contacts[ cId ])
+			return;
+		
+		self.contacts[ cId ] = con;
+	}
+	
+	const cList = {
+		type : 'contact-list',
+		data : list,
+	};
+	self.client.send( cList );
+}
+
+ns.Presence.prototype.handleContactAdd = function( identity ) {
+	const self = this;
+	log( 'handleContactAdd', identity );
+	const cId = identity.clientId;
+	if ( self.contacts[ cId ])
+		return;
+	
+	self.contacts[ cId ] = identity;
+	const cAdd = {
+		type : 'contact-add',
+		data : identity,
+	};
+	self.client.send( cAdd );
+}
+
+ns.Presence.prototype.handleContactRemove = function( clientId ) {
+	const self = this;
+	log( 'handleContactRemove', clientId );
+	delete self.contacts[ clientId ];
+	const cRemove = {
+		type : 'contact-remove',
+		data : clientId,
+	};
+	self.client.send( cRemove );
 }
 
 // conf updates

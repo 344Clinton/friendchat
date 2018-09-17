@@ -301,6 +301,14 @@ library.component = library.component || {};
 			throw new Error( 'hello.template not defined' );
 		
 		const container = document.getElementById( self.containerId );
+		if ( !container ) {
+			console.log(
+				'StatusIndicator.initIndicator - could not find element for id:',
+				self.containerId
+			);
+			return;
+		}
+		
 		if ( 'icon' === self.type )
 			self.buildIconIndicator( container );
 		else
@@ -310,7 +318,7 @@ library.component = library.component || {};
 		self.state = stateKeys[ 0 ];
 		self.inner.classList.add( self.statusMap[ self.state ]);
 	}
-		
+	
 	ns.StatusIndicator.prototype.buildIconIndicator = function( container ) {
 		const self = this;
 		const tmplId = self.typeTmplMap[ 'icon' ];
@@ -321,7 +329,7 @@ library.component = library.component || {};
 		container.appendChild( el );
 		self.bindIconIndicator( container );
 	}
-		
+	
 	ns.StatusIndicator.prototype.buildLEDIndicator = function( container ) {
 		const self = this;
 		const tmplId = self.typeTmplMap[ 'led' ];

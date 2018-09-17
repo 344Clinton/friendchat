@@ -37,8 +37,8 @@ library.module = library.module || {};
 		self.onremove = conf.onremove;
 		
 		self.identity = null;
+		self.rooms = {};
 		self.contacts = {};
-		self.messageMap = null;
 		self.updateMap = null;
 		self.conn = null;
 		self.view = null;
@@ -90,19 +90,23 @@ library.module = library.module || {};
 	ns.BaseModule.prototype.initBaseModule = function() {
 		const self = this;
 		// server stuff
-		self.conn = new library.system.Message({
-			id : self.clientId,
-			handler : receiveMsg
-		});
+		self.conn = new library.component.EventNode(
+			self.clientId,
+			hello.conn,
+			eventSink
+		);
 		
-		function receiveMsg( msg ) { self.receiveMsg( msg ); }
+		function eventSink( type, data ) {
+			console.log( 'BaseModule - conn eventSink', {
+				type : type,
+				data : data,
+			});
+		}
 		
-		self.messageMap = {
-			'initstate'  : initState,
-			'connection' : connection,
-			'settings'   : showSettings,
-			'setting'    : updateSetting,
-		};
+		self.conn.on( 'initstate', initState );
+		self.conn.on( 'connection', connection );
+		self.conn.on( 'settings', showSettings );
+		self.conn.on( 'setting', updateSetting );
 		
 		function initState( msg ) { self.initializeState( msg ); }
 		function connection( msg ) { self.connection( msg ); }
@@ -138,20 +142,6 @@ library.module = library.module || {};
 		self.updateMap = {};
 		self.setName();
 		self.setIdentity();
-	}
-	
-	ns.BaseModule.prototype.receiveMsg = function( msg ) {
-		const self = this;
-		var handler = self.messageMap[ msg.type ];
-		if ( !handler ) {
-			console.log( 'app.BaseModule.receiveMsg - no handler for', {
-				msg : msg,
-				handlers : self.messageMap,
-			});
-			return;
-		}
-		
-		handler( msg.data );
 	}
 	
 	ns.BaseModule.prototype.initialize = function() {
@@ -498,6 +488,8 @@ library.module = library.module || {};
 		
 		self.type = 'presence';
 		self.roomRequests = {};
+		self.contactList = [];
+		self.relations = {};
 		self.init();
 	}
 	
@@ -601,27 +593,31 @@ library.module = library.module || {};
 	
 	ns.Presence.prototype.init = function() {
 		const self = this;
-		/* UHEUHEUHEE
-		if ( !self.module.settings.identity )
-			self.module.settings.identity
-		*/
 		
 		// server
-		self.messageMap[ 'initialize' ] = initialize;
-		self.messageMap[ 'login' ] = loginChallenge;
-		self.messageMap[ 'password' ] = passChallenge;
-		self.messageMap[ 'account' ] = handleAccount;
-		self.messageMap[ 'identity' ] = handleIdentity;
-		self.messageMap[ 'invite' ] = handleInvite;
-		self.messageMap[ 'rooms' ] = setupRooms;
-		self.messageMap[ 'join' ] = joinedRoom;
-		self.messageMap[ 'close' ] = roomClosed;
-		self.messageMap[ 'clear' ] = clear;
+		self.conn.on( 'initialize', initialize );
+		self.conn.on( 'login', loginChallenge );
+		self.conn.on( 'password', passChallenge );
+		self.conn.on( 'account', handleAccount );
+		self.conn.on( 'contact-init', contactInit );
+		self.conn.on( 'contact-list', contactList );
+		self.conn.on( 'contact-add', contactAdd );
+		self.conn.on( 'contact-remove', contactRemove );
+		self.conn.on( 'identity', handleIdentity );
+		self.conn.on( 'invite', handleInvite );
+		self.conn.on( 'rooms', setupRooms );
+		self.conn.on( 'join', joinedRoom );
+		self.conn.on( 'close', roomClosed );
+		self.conn.on( 'clear', clear );
 		
 		function initialize( e ) { self.handleInitialize( e ); }
 		function loginChallenge( e ) { self.loginChallenge( e ); }
 		function passChallenge( e ) { self.passChallenge( e ); }
 		function handleAccount( e ) { self.handleAccount( e ); }
+		function contactInit( e ) { self.handleContactInit( e ); }
+		function contactList( e ) { self.handleContactList( e ); }
+		function contactAdd( e ) { self.handleContactAdd( e ); }
+		function contactRemove( e ) { self.handleContactRemove( e ); }
 		function handleIdentity( e ) { self.handleIdentity( e ); }
 		function handleInvite( e ) { self.handleInvite( e ); }
 		function setupRooms( e ) { self.setupRooms( e ); }
@@ -631,8 +627,10 @@ library.module = library.module || {};
 		
 		// view
 		self.view.on( 'create-room', createRoom );
+		self.view.on( 'contact', contact );
 		
 		function createRoom( e ) { self.handleCreateRoom( e ); }
+		function contact( e ) { self.handleContactAction( e ); }
 		
 		// lets go
 		self.setup();
@@ -669,8 +667,9 @@ library.module = library.module || {};
 		console.log( 'Presence.initialize - NYI', state );
 	}
 	
-	ns.Presence.prototype.handleInitialize = function() {
+	ns.Presence.prototype.handleInitialize = function( e ) {
 		const self = this;
+		console.log( 'handleInitialize', e );
 		self.sendInit();
 	}
 	
@@ -696,7 +695,7 @@ library.module = library.module || {};
 	ns.Presence.prototype.clear = function() {
 		const self = this;
 		self.cleanContacts();
-		self.accountId = null
+		self.accountId = null;
 		
 	}
 	
@@ -780,6 +779,10 @@ library.module = library.module || {};
 	
 	ns.Presence.prototype.handleAccount = function( account ) {
 		const self = this;
+		console.log( 'handleAccount - SO MANY TODOS???', {
+			account : account,
+			identity : self.identity, 
+		});
 		self.account = account;
 		self.accountId = account.clientId;
 		if ( account.name !== self.identity.name )
@@ -799,11 +802,69 @@ library.module = library.module || {};
 		//self.identity.clientId = account.clientId || self.identity.clientId;
 		//self.identity.name     = account.name     || self.identity.name;
 		//self.identity.avatar   = account.avatar   || self.identity.avatar;
-		const uptd = {
-			type : 'identity',
-			data : self.identity,
+		const uid = {
+			type : 'user-id',
+			data : self.accountId,
 		};
+		self.toView( uid );
 		//self.updateView( uptd );
+	}
+	
+	ns.Presence.prototype.handleContactInit = function( contacts ) {
+		const self = this;
+		console.log( 'handleContactInit', contacts );
+		self.relations = contacts;
+		const ids = Object.keys( contacts );
+		const list = ids.map( id => contacts[ id ]);
+		const cList = {
+			type : 'contact-list',
+			data : list,
+		};
+		self.toView( cList );
+	}
+	
+	ns.Presence.prototype.handleContactList = function( list ) {
+		const self = this;
+		console.log( 'presence.handleContactList', list );
+		list.forEach( add );
+		const cList = {
+			type : 'contact-list',
+			data : list,
+		};
+		self.toView( cList );
+		
+		function add( con ) {
+			self.handleContactAdd( con );
+		}
+	}
+	
+	ns.Presence.prototype.handleContactAdd = function( contact ) {
+		const self = this;
+		console.log( 'presence.handleContactAdd', contact );
+		let cId = contact.clientId;
+		if ( self.relations[ cId ])
+			return;
+		
+		self.relations[ cId ] = contact;
+		const cAdd = {
+			type : 'contact-add',
+			data : contact,
+		};
+		self.toView( cAdd );
+	}
+	
+	ns.Presence.prototype.handleContactRemove = function( clientId ) {
+		const self = this;
+		console.log( 'presence.handleContactRemove', clientId );
+		if ( !self.relations[ clientId ])
+			return;
+		
+		delete self.relations[ clientId ];
+		const cAdd = {
+			type : 'contact-remove',
+			data : clientId,
+		};
+		self.toView( cAdd );
 	}
 	
 	ns.Presence.prototype.handleIdentity = function( event ) {
@@ -844,6 +905,7 @@ library.module = library.module || {};
 	
 	ns.Presence.prototype.handleRoomClosed = function( roomId ) {
 		const self = this;
+		console.log( 'handleRoomClosed', roomId );
 		self.removeContact( roomId );
 	}
 	
@@ -871,6 +933,16 @@ library.module = library.module || {};
 	ns.Presence.prototype.handleCreateRoom = function() {
 		const self = this;
 		self.createRoom();
+	}
+	
+	ns.Presence.prototype.handleContactAction = function( action ) {
+		const self = this;
+		console.log( 'handleContactAction', action );
+		const event = {
+			type : 'contact',
+			data : action,
+		};
+		self.toAccount( event );
 	}
 	
 	// to server
@@ -934,6 +1006,7 @@ library.module = library.module || {};
 	
 	ns.Presence.prototype.addRoom = function( conf ) {
 		const self = this;
+		console.log( 'Presence.addRoom', conf );
 		if ( !conf.clientId ) {
 			console.log( 'addRoom - conf does not have clientId', conf );
 			return;
@@ -956,6 +1029,7 @@ library.module = library.module || {};
 		const roomConf = {
 			moduleId   : self.clientId,
 			room       : conf,
+			parentConn : self.conn,
 			parentView : self.parentView,
 			host       : host,
 			user       : self.identity,
@@ -964,13 +1038,12 @@ library.module = library.module || {};
 		room = new library.contact.PresenceRoom( roomConf );
 		self.contacts[ room.clientId ] = room;
 		conf.identity = room.identity;
-		conf.userId = room.userId;
 		
 		const addRoom = {
 			type : 'join',
 			data : conf,
 		};
-		self.view.sendMessage( addRoom );
+		self.toView( addRoom );
 		return room;
 	}
 	
@@ -1230,13 +1303,13 @@ library.module = library.module || {};
 	
 	ns.Treeroot.prototype.init = function() {
 		const self = this;
-		self.messageMap[ 'account' ] = updateAccount;
-		self.messageMap[ 'contact' ] = contactEvent;
-		self.messageMap[ 'subscription' ] = subscription;
-		self.messageMap[ 'register' ] = registerResponse;
-		self.messageMap[ 'userlist' ] = userList;
-		self.messageMap[ 'keyexchange' ] = keyExchangeHandler;
-		self.messageMap[ 'pass-ask-auth' ] = passAskAuth;
+		self.conn.on( 'account', updateAccount );
+		self.conn.on( 'contact', contactEvent );
+		self.conn.on( 'subscription', subscription );
+		self.conn.on( 'register', registerResponse );
+		self.conn.on( 'userlist', userList );
+		self.conn.on( 'keyexchange', keyExchangeHandler );
+		self.conn.on( 'pass-ask-auth', passAskAuth );
 		
 		function updateAccount( e ) { self.updateAccount( e ); }
 		function contactEvent( e ) { self.contactEvent( e ); }
@@ -1798,13 +1871,14 @@ library.module = library.module || {};
 			return;
 		
 		var conf = {
-			moduleId : self.clientId,
+			moduleId   : self.clientId,
+			parentConn : self.conn,
 			parentView : self.parentView,
 			parentPath : self.dormantParentPath,
-			contact : contact,
-			msgCrypto : !!self.module.settings.msgCrypto,
-			encrypt : encrypt,
-			decrypt : decrypt,
+			contact    : contact,
+			msgCrypto  : !!self.module.settings.msgCrypto,
+			encrypt    : encrypt,
+			decrypt    : decrypt,
 		};
 		
 		function encrypt( e ) {
@@ -1885,6 +1959,7 @@ library.module = library.module || {};
 	
 	ns.Treeroot.prototype.subscription = function( data ) {
 		const self = this;
+		console.log( 'subscription', data );
 		if ( 'add' === data.type ) {
 			self.addSubscription( data.data );
 			return;
@@ -1917,9 +1992,10 @@ library.module = library.module || {};
 		}
 		
 		var conf = {
-			moduleId : self.clientId,
+			moduleId   : self.clientId,
 			parentView : self.parentView,
 			subscriber : subscription,
+			subscribe  : subscribe,
 		};
 		
 		var subObj = new library.contact.Subscriber( conf );
@@ -1931,6 +2007,13 @@ library.module = library.module || {};
 		});
 		
 		hello.log.positive( 'Contact request: ' + ( subscription.displayName || subscription.clientId ));
+		function subscribe( event ) {
+			const sub = {
+				type : 'subscription',
+				data : event,
+			};
+			self.conn.send( sub );
+		}
 	}
 	
 	ns.Treeroot.prototype.removeSubscription = ns.Treeroot.prototype.removeContact;
@@ -2009,9 +2092,11 @@ library.module = library.module || {};
 				type : 'subscription',
 				data : {
 					type   : 'subscribe',
-					idType : data.type,
-					id     : data.id,
-					reqId  : reqId,
+					data : {
+						idType : data.type,
+						id     : data.id,
+						reqId  : reqId,
+					},
 				},
 			});
 			self.requests[ reqId ] = subConfirm;
@@ -2036,6 +2121,7 @@ library.module = library.module || {};
 	
 	ns.Treeroot.prototype.confirmSubscription = function( event ) {
 		const self = this;
+		console.log( 'confirmsubscription', event );
 		const reqId = event.reqId;
 		if ( !reqId )
 			return;
@@ -2303,15 +2389,15 @@ library.module = library.module || {};
 	
 	ns.IRC.prototype.init = function() {
 		const self = this;
-		self.messageMap[ 'message' ] = consoleMsg;
-		self.messageMap[ 'identity' ] = identityChange;
-		self.messageMap[ 'join' ] = join;
-		self.messageMap[ 'leave' ] = leave;
-		self.messageMap[ 'private' ] = privateChat;
-		self.messageMap[ 'nick' ] = nickChange;
-		self.messageMap[ 'quit' ] = quit;
-		self.messageMap[ 'clear' ] = clearTargets;
-		self.messageMap[ 'disconnect' ] = clientDisconnect;
+		self.conn.on( 'message', consoleMsg );
+		self.conn.on( 'identity', identityChange );
+		self.conn.on( 'join', join );
+		self.conn.on( 'leave', leave );
+		self.conn.on( 'private', privateChat );
+		self.conn.on( 'nick', nickChange );
+		self.conn.on( 'quit', quit );
+		self.conn.on( 'clear', clearTargets );
+		self.conn.on( 'disconnect', clientDisconnect );
 		
 		function consoleMsg( e ) { self.consoleMessage( e ); }
 		function identityChange( e ) { self.identityChange( e ); }
@@ -2544,11 +2630,12 @@ library.module = library.module || {};
 		}
 		
 		var conf = {
-			moduleId : self.clientId,
+			moduleId   : self.clientId,
+			parentConn : self.conn,
 			parentView : self.parentView,
-			user : self.identity,
-			channel : channel,
-			viewTheme : self.module.settings.ircTheme,
+			user       : self.identity,
+			channel    : channel,
+			viewTheme  : self.module.settings.ircTheme,
 		};
 		
 		var chanObj = new library.contact.IrcChannel( conf );
@@ -2680,12 +2767,17 @@ library.module = library.module || {};
 	
 	ns.IRC.prototype.createPrivateChat = function( contact, forceOpen ) {
 		const self = this;
+		console.log( 'createPrivateChat', {
+			contact   : contact,
+			forceOpen : forceOpen,
+		});
 		var conf = {
-			moduleId : self.clientId,
+			moduleId   : self.clientId,
+			parentConn : self.conn,
 			parentView : self.parentView,
-			contact : contact,
-			user : self.identity,
-			viewTheme : self.module.settings.ircTheme,
+			contact    : contact,
+			user       : self.identity,
+			viewTheme  : self.module.settings.ircTheme,
 		};
 		
 		var privObj = new library.contact.IrcPrivMsg( conf );
@@ -2740,7 +2832,7 @@ library.module = library.module || {};
 			if ( !contact )
 				return;
 			
-			contact.receiveMsg( msg );
+			contact.handleEvent( msg );
 		}
 	}
 	
@@ -2817,12 +2909,9 @@ library.module = library.module || {};
 	
 })( library.module );
 
-// FACEHUG
+// Telegram
 (function( ns, undefined ) {
-	ns.Facebook = function( conf ) {
-		if ( !( this instanceof ns.Facebook ))
-			return new ns.Facebook( conf );
-		
+	ns.Telegram = function( conf ) {
 		const self = this;
 		
 		library.module.BaseModule.call( self, conf );
@@ -2830,33 +2919,11 @@ library.module = library.module || {};
 		self.init();
 	}
 	
-	ns.Facebook.prototype = Object.create( library.module.BaseModule.prototype );
+	ns.Telegram.prototype = Object.create( library.module.BaseModule.prototype );
 	
-	ns.Facebook.prototype.init = function() {
+	ns.Telegram.prototype.init = function() {
 		const self = this;
-		console.log( 'app.module.Facebook.init' );
+		console.log( 'app.module.Telegram.init' );
 	}
 	
 })( library.module );
-
-// PHMODULE
-(function( ns, undefined ) {
-	ns.PHModule = function( conf ) {
-		if ( !( this instanceof ns.PHModule ))
-			return new ns.PHModule( conf );
-		
-		const self = this;
-		library.module.BaseModule.call( self, conf );
-		
-		self.init();
-	}
-	
-	ns.PHModule.prototype = Object.create( library.module.BaseModule.prototype );
-	
-	ns.PHModule.prototype.init = function() {
-		const self = this;
-		console.log( 'app.module.PHModule.init' );
-	};
-	
-})( library.module );
-

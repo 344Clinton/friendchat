@@ -196,10 +196,18 @@ var hello = window.hello || {};
 	
 	ns.ModuleControl.prototype.getContainerId = function( moduleType ) {
 		const self = this;
-		if ( 'presence' === moduleType )
-			return 'conferences';
-		else
-			return 'contacts';
+		return {
+			conference : 'conferences',
+			contact    : 'contacts',
+		};
+	}
+	
+	ns.ModuleControl.prototype.setGuide = function() {
+		const self = this;
+		self.guide = new library.component.InfoBox({
+			containerId : 'conversations',
+			element     : null,
+		});
 	}
 	
 })( library.view );
@@ -208,12 +216,12 @@ var hello = window.hello || {};
 	base module
 */
 (function( ns, undefined ) {
-	ns.BaseModule.prototype.setCss = function() { return; }
+	ns.BaseModule.prototype.setLogoCss = function() { return; }
 	ns.BaseModule.prototype.initFoldit = function() { return; }
-	ns.BaseModule.prototype.initStatus = function() {
+	ns.BaseModule.prototype.initConnStatus = function() {
 		const self = this;
-		self.connectionState = new library.component.StatusIndicator({
-			containerId : self.connectionState,
+		const conf = {
+			containerId : null,
 			type        : 'icon',
 			cssClass    : 'fa-circle',
 			statusMap   : {
@@ -223,7 +231,17 @@ var hello = window.hello || {};
 				connecting : 'Notify',
 				error      : 'Alert',
 			},
-		});
+		};
+		
+		if ( self.roomsConnState ) {
+			conf.containerId = self.roomsConnState;
+			self.roomsConnState = new library.component.StatusIndicator( conf );
+		}
+		
+		if ( self.contactsConnState ) {
+			conf.containerId = self.contactsConnState;
+			self.contactsConnState = new library.component.StatusIndicator( conf );
+		}
 	}
 	
 })( library.view );
@@ -232,24 +250,60 @@ var hello = window.hello || {};
 	presence
 */
 (function( ns, undefined ) {
-	ns.Presence.prototype.getTitleString = function() {
-		const self = this;
-		return 'Conference rooms';
-	}
+	ns.Presence.prototype.setLogoCss = function() { return; }
+	ns.Presence.prototype.initFoldit = function() { return; }
 	
-	ns.Presence.prototype.buildElement = function() {
+	ns.Presence.prototype.buildRoomsElement = function() {
 		const self = this;
-		const title = self.getTitleString();
-		const tmplId = 'simple-presence-module-tmpl';
+		const title = self.getTitleString( 'conference' );
+		const tmplId = 'simple-presence-rooms-tmpl';
 		const conf = {
-			clientId     : self.clientId,
+			roomsId      : self.roomsId,
 			title        : title,
-			connStateId  : self.connectionState,
-			contactsId   : self.contactsId,
+			connStateId  : self.roomsConnState,
+			itemsId      : self.roomItemsId,
 		};
 		const el = hello.template.getElement(  tmplId, conf );
-		const cont = document.getElementById( self.containerId );
+		const cont = document.getElementById( self.containers.conference );
 		cont.appendChild( el );
+	}
+	
+	ns.Presence.prototype.buildContactsElement = function() {
+		const self = this;
+		const title = self.getTitleString( 'contact' );
+		const tmplId = 'simple-presence-rooms-tmpl';
+		const conf = {
+			roomsId      : self.contactsId,
+			title        : title,
+			connStateId  : self.contactsConnState,
+			itemsId      : self.contactItemsId,
+		};
+		const el = hello.template.getElement(  tmplId, conf );
+		const cont = document.getElementById( self.containers.contact );
+		cont.appendChild( el );
+	}
+	
+	ns.Presence.prototype.initStatus = function() {
+		const self = this;
+		console.log( 'Presence.initStatus' );
+		const conf = {
+			containerId : null,
+			type        : 'icon',
+			cssClass    : 'fa-circle',
+			statusMap   : {
+				offline    : 'Off',
+				online     : 'On',
+				open       : 'Warning',
+				connecting : 'Notify',
+				error      : 'Alert',
+			},
+		};
+		
+		conf.containerId = self.roomsConnState;
+		self.roomsConnState = new library.component.StatusIndicator( conf );
+		
+		conf.containerId = self.contactsConnState;
+		self.contactsConnState = new library.component.StatusIndicator( conf );
 	}
 	
 })( library.view );
@@ -259,27 +313,31 @@ var hello = window.hello || {};
 	treeroot
 */
 (function( ns, undefined ) {
+	ns.Treeroot.prototype.setLogoCss = function() { return; }
+	ns.Treeroot.prototype.initFoldit = function() { return; }
+	
 	ns.Treeroot.prototype.getTitleString = function() {
 		const self = this;
-		return 'Contacts';
+		return window.View.i18n( 'i18n_community_contacts' );
 	}
 	
-	ns.Treeroot.prototype.buildElement = function() {
+	ns.Treeroot.prototype.buildContactsElement = function() {
 		const self = this;
+		console.log( 'buildContactsElement', self.contactsId );
 		const title = self.getTitleString();
 		const tmplId = 'simple-treeroot-module-tmpl';
 		const conf = {
-			clientId          : self.clientId,
-			moduleTitle       : title,
-			connectionStateId : self.connectionState,
-			contactsId        : self.contactsId,
-			activeId          : self.activeId,
-			inactiveId        : self.inactiveId,
+			clientId    : self.contactsId,
+			moduleTitle : title,
+			connStateId : self.contactsConnState,
+			itemsId     : self.contactItemsId,
+			activeId    : self.activeId,
+			inactiveId  : self.inactiveId,
 		};
 		
 		const el = hello.template.getElement( tmplId, conf );
-		const cont = document.getElementById( self.containerId );
-		cont.appendChild( el );
+		const container = document.getElementById( self.containers.contact );
+		container.appendChild( el );
 		
 		// Toggle offline users
 		var toggleOfflineUsers = document.getElementById( 'button_' + conf.inactiveId );
@@ -300,8 +358,9 @@ var hello = window.hello || {};
 		}
 	}
 	
-	ns.Treeroot.prototype.getMenuOptions = function() {
+	ns.Treeroot.prototype.getMenuOptions = function( type ) {
 		const self = this;
+		console.log( 'getMenuOptions', type )
 		const opts = [
 			self.menuActions[ 'add-contact' ],
 			self.menuActions[ 'settings' ],
@@ -310,50 +369,6 @@ var hello = window.hello || {};
 		
 		return opts;
 	}
-	
-	ns.Treeroot.prototype.addMenu = function() {
-		const self = this;
-		return;
-		const settingsId = friendUP.tool.uid( 'settings' );
-		const settingsItem = {
-			type : 'item',
-			id : settingsId,
-			name : 'Settings',
-			faIcon : 'fa-cog',
-		};
-		
-		const reconnectId = friendUP.tool.uid( 'reconnect' );
-		const reconnectItem = {
-			type : 'item',
-			id : reconnectId,
-			name : 'Reconnect',
-			faIcon : 'fa-refresh',
-		};
-		
-		self.menuId = friendUP.tool.uid( 'menu' );
-		const folder = {
-			type : 'folder',
-			id : self.menuId,
-			name : 'module',
-			faIcon : 'fa-folder-o',
-			items : [
-				settingsItem,
-				reconnectItem,
-			],
-		};
-		
-		main.menu.add( folder, 'modules' );
-		
-		main.menu.on( settingsId, showSettings );
-		main.menu.on( reconnectId, doReconnect );
-		
-		function showSettings() { self.optionSettings(); }
-		function doReconnect() { self.optionReconnect(); }
-	}
-	
-	ns.Treeroot.prototype.setCss = function() { return; }
-	ns.Treeroot.prototype.initFoldit = function() { return; }
-	
 })( library.view );
 
 // Rececnt conversations
