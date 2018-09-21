@@ -385,35 +385,45 @@ library.module = library.module || {};
 	
 	ns.BaseModule.prototype.cleanContacts = function() {
 		const self = this;
-		for ( id in self.contacts ) {
-			callClose( id );
-		}
-		
-		function callClose( id ) {
-			self.removeContact( id );
-		}
+		const ids = Object.keys( self.contacts );
+		ids.forEach( id => self.removeContact( id ));
 	}
 	
+	ns.BaseModule.prototype.cleanRooms = function() {
+		const self = this;
+		const ids = Object.keys( self.rooms );
+		ids.forEach( id => self.removeRoom( id ));
+	}
 	
 	ns.BaseModule.prototype.removeContact = function( clientId ) {
 		const self = this;
-		if ( !clientId || !self.contacts[ clientId ]) {
-			console.log( 'invalid clientId', clientId);
+		const contact = self.contacts[ clientId ];
+		if ( !contact )
 			return;
-		}
 		
 		self.view.sendMessage({
 			type: 'remove',
 			data : clientId,
 		});
 		
-		const contact = self.contacts[ clientId ];
-		if ( !contact )
-			return;
-		
 		delete self.contacts[ clientId ];
 		if ( contact.close )
 			contact.close();
+	}
+	
+	ns.BaseModule.prototype.removeRoom = function( clientId ) {
+		const self = this;
+		const room = self.rooms[ clientId ];
+		if ( !room )
+			return;
+		
+		self.view.sendMessage({
+			type : 'remove',
+			data : clientId,
+		});
+		delete self.rooms[ clientId ];
+		if ( room.close )
+			room.close();
 	}
 	
 	ns.BaseModule.prototype.setLocalData = function( data, callback ) {
@@ -474,6 +484,7 @@ library.module = library.module || {};
 	ns.BaseModule.prototype.baseClose = function() {
 		const self = this;
 		self.cleanContacts();
+		self.cleanRooms();
 		self.conn.close();
 		self.view.close();
 	}
@@ -502,9 +513,15 @@ library.module = library.module || {};
 	
 	ns.Presence.prototype.reconnect = function() {
 		const self = this;
-		let ids = Object.keys( self.contacts );
-		ids.forEach( id => {
-			let room = self.contacts[ id ];
+		let cIds = Object.keys( self.contacts );
+		let rIds = Object.keys( self.rooms );
+		cIds.forEach( id => {
+			let con = self.contacts[ id ];
+			con.reconnect();
+		});
+		
+		rIds.forEach( id => {
+			let room = self.rooms[ id ];
 			room.reconnect();
 		});
 	}
@@ -513,6 +530,7 @@ library.module = library.module || {};
 		const self = this;
 		let pools = [
 			new Promise( getRooms ),
+			new Promise( getContacts ),
 		];
 		
 		return {
@@ -521,11 +539,11 @@ library.module = library.module || {};
 		};
 		
 		function getRooms( resolve, reject ) {
-			let items = Object.keys( self.contacts )
+			let items = Object.keys( self.rooms )
 				.map( build );
 			
 			resolve({
-				type    : '',
+				type    : 'rooms',
 				actions : [
 					'open-chat',
 					'live-audio',
@@ -533,45 +551,72 @@ library.module = library.module || {};
 				],
 				pool    : items,
 			});
+			
+			function build( rId ) {
+				let room = self.rooms[ rId ];
+				let item = {
+					id         : room.clientId,
+					type       : 'room',
+					isRelation : true,
+					name       : room.identity.name,
+				};
+				return item;
+			}
 		}
 		
-		function build( cId ) {
-			let room = self.contacts[ cId ];
-			let item = {
-				id         : room.clientId,
-				type       : 'room',
-				isRelation : true,
-				name       : room.identity.name,
-			};
-			return item;
+		function getContacts( resolve, reject ) {
+			let items = Object.keys( self.contacts )
+				.map( build );
+				
+			resolve({
+				type    : 'contacts',
+				actions : [
+					'open-chat',
+					'live-audio',
+					'live-video',
+				],
+				pool    : items,
+			});
+			
+			function build( cId ) {
+				let con = self.contacts[ cId ];
+				let item = {
+					id         : con.clientId,
+					type       : 'contact',
+					isRelation : true,
+					name       : con.identity.name,
+				};
+				return item;
+			}
 		}
 	}
 	
 	ns.Presence.prototype.openChat = function( conf ) {
 		const self = this;
-		const room = self.contacts[ conf.id ];
-		if ( !room )
+		console.log( 'presence.openChat', conf );
+		const item = self.getTypeItem( conf.id, conf.type );
+		if ( !item )
 			return;
 		
-		room.openChat();
+		item.openChat();
 	}
 	
 	ns.Presence.prototype.goLiveAudio = function( conf ) {
 		const self = this;
-		const room = self.contacts[ conf.id ];
-		if ( !room )
+		const item = self.getTypeItem( conf.id, conf.type );
+		if ( !item )
 			return;
 		
-		room.startAudio();
+		item.startAudio();
 	}
 	
 	ns.Presence.prototype.goLiveVideo = function( conf ) {
 		const self = this;
-		const room = self.contacts[ conf.id ];
-		if ( !room )
+		const item = self.getTypeItem( conf.id, conf.type );
+		if ( !item )
 			return;
 		
-		room.startVideo();
+		item.startVideo();
 	}
 	
 	ns.Presence.prototype.create = function( identity ) {
@@ -639,6 +684,32 @@ library.module = library.module || {};
 		self.setup();
 	}
 	
+	ns.Presence.prototype.getTypeItem = function( cId, type ) {
+		const self = this;
+		const cId = conf.id;
+		const type = conf.type;
+		let item = null;
+		if ( type )
+			item = byType( cId, type );
+		else
+			item = madness( cId );
+		
+		return item;
+		
+		function byType( cId, type ) {
+			if ( 'room' === type )
+				return self.rooms[ cId ];
+			else
+				return self.contacts[ cId ];
+		}
+		
+		function madness( cId ) {
+			let room = self.rooms[ cId ];
+			let con = self.contacts[ cId ];
+			return room || con || null;
+		}
+	}
+	
 	ns.Presence.prototype.setup = function() {
 		const self = this;
 		// register as service provider with the rtc bridge
@@ -697,6 +768,7 @@ library.module = library.module || {};
 	
 	ns.Presence.prototype.clear = function() {
 		const self = this;
+		self.cleanRooms();
 		self.cleanContacts();
 		self.accountId = null;
 		
@@ -704,13 +776,16 @@ library.module = library.module || {};
 	
 	// from service
 	
-	ns.Presence.prototype.handleServiceOnGetInfo = function( roomId ) {
+	ns.Presence.prototype.handleServiceOnGetInfo = function( clientId ) {
 		const self = this;
-		let room = self.contacts[ roomId ];
+		const item = self.getTypeItem( clientId );
+		if ( !item )
+			return null;
+		
 		return {
-			id       : roomId,
-			name     : room.identity.name,
-			peers    : room.peers,
+			id       : clientId,
+			name     : item.identity.name,
+			peers    : item.peers,
 		};
 	}
 	
@@ -940,7 +1015,7 @@ library.module = library.module || {};
 	ns.Presence.prototype.handleRoomClosed = function( roomId ) {
 		const self = this;
 		console.log( 'handleRoomClosed', roomId );
-		self.removeContact( roomId );
+		self.removeRoom( roomId );
 	}
 	
 	ns.Presence.prototype.handleRequest = function( reqId, roomId ) {
@@ -1024,14 +1099,14 @@ library.module = library.module || {};
 			if ( !roomId )
 				return false;
 			
-			if ( self.contacts[ roomId ])
+			if ( self.rooms[ roomId ])
 				return true;
 			else
 				return false;
 		}
 		
 		function rejoinLive( roomId, conf ) {
-			const room = self.contacts[ roomId ];
+			const room = self.rooms[ roomId ];
 			room.joinLive( conf );
 		}
 	}
@@ -1046,7 +1121,7 @@ library.module = library.module || {};
 			return;
 		}
 		
-		let room = self.contacts[ conf.clientId ];
+		let room = self.rooms[ conf.clientId ];
 		if ( room ) {
 			console.log( 'already initalized', conf );
 			room.reconnect();
@@ -1070,7 +1145,7 @@ library.module = library.module || {};
 			userId     : self.accountId,
 		};
 		room = new library.contact.PresenceRoom( roomConf );
-		self.contacts[ room.clientId ] = room;
+		self.rooms[ room.clientId ] = room;
 		conf.identity = room.identity;
 		
 		const addRoom = {
@@ -1083,7 +1158,7 @@ library.module = library.module || {};
 	
 	ns.Presence.prototype.joinLiveSession = function( roomId, sessConf ) {
 		const self = this;
-		const room = self.getRoom( roomId );
+		const room = self.getTypeItem( roomId );
 		if ( !room )
 			return;
 		
@@ -1092,7 +1167,7 @@ library.module = library.module || {};
 	
 	ns.Presence.prototype.setupLiveSession = function( roomId, sessConf ) {
 		const self = this;
-		const room = self.contacts[ roomId ];
+		const room = self.getTypeItem( roomId );
 		if ( !room ) {
 			console.log( 'Presence.setupLvieSession - no room for id', {
 				rid  : roomId,
@@ -1174,11 +1249,11 @@ library.module = library.module || {};
 		if ( !roomId )
 			throw new Error( 'Presence.getRoom - no roomId' );
 		
-		const room = self.contacts[ roomId ];
+		const room = self.rooms[ roomId ];
 		if ( !room ) {
 			console.log( 'Presence.getRoom - no room for id', {
 				rid   : roomId,
-				rooms : self.contacts,
+				rooms : self.rooms,
 			});
 			throw new Error( 'Presence.getRoom - no room for id' );
 		}
