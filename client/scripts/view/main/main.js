@@ -1464,38 +1464,24 @@ library.view = library.view || {};
 			return;
 		}
 		
-		const conf = {
+		const contactConf = {
 			menuActions : self.menuActions,
 			containerId : self.contactItemsId,
-			conn        : self.mod,
 			userId      : self.userId,
 			contact     : {
-				clientId : cId,
-				identity : identity,
+				clientId  : cId,
+				identity  : identity,
 			},
 		};
-		const contact = new library.view.PresenceContact( conf );
+		const contact = new library.view.PresenceContact( contactConf, window.View );
 		self.contacts[ cId ] = contact;
 		self.contactIds.push( cId );
+		self.emit( 'add', contact );
 	}
 	
 	ns.Presence.prototype.handleContactJoin = function( conf ) {
 		const self = this;
-		let cId = conf.clientId;
-		if( self.contacts[ cId ])
-			self.handleContactRemove( cId );
-		
-		const roomConf = {
-			menuActions : self.menuActions,
-			containerId : self.contactItemsId,
-			conn        : window.View,
-			userId      : self.userId,
-			room        : conf,
-		};
-		const room = new library.view.PresenceRoom( roomConf );
-		self.contacts[ cId ] = room;
-		self.contactIds.push( cId );
-		self.emit( 'add', room );
+		console.log( 'handleContactJoin', conf );
 	}
 	
 	ns.Presence.prototype.getMenuOptions = function( type ) {
@@ -1575,72 +1561,6 @@ library.view = library.view || {};
 	
 })( library.view );
 
-(function( ns, undefined ) {
-	ns.PresenceContact = function( conf ) {
-		const self = this;
-		self.type = 'contact';
-		self.data = conf.contact;
-		self.userId = conf.userId;
-		self.userLive = false;
-		self.contactLive = false;
-		self.contactOnline = friendUP.tool.uid( 'online' );
-		
-		ns.BaseContact.call( self, conf );
-		self.init();
-	}
-	
-	ns.PresenceContact.prototype = Object.create( ns.BaseContact.prototype );
-	
-	ns.PresenceContact.prototype.setupConn = function( parentConn ) {
-		const self = this;
-		self.conn = new library.component.EventNode(
-			'contact',
-			parentConn,
-		);
-	}
-	
-	ns.PresenceContact.prototype.init = function() {
-		const self = this;
-		console.log( 'PresenceContact.init' );
-	}
-	
-	ns.PresenceContact.prototype.buildElement = function() {
-		const self = this;
-		const tmplId = 'presence-contact-tmpl';
-		const conf = {
-			clientId     : self.clientId,
-			name         : self.identity.name,
-			roomStatusId : self.roomStatus,
-			liveStatusId : self.liveStatus,
-			msgWaitingId : self.msgWaiting,
-		};
-		console.log( 'PresenceContact.builDelement - containerId', self.containerId );
-		const container = document.getElementById( self.containerId );
-		const el = hello.template.getElement( tmplId, conf );
-		container.appendChild( el );
-	}
-	
-	ns.PresenceContact.prototype.getMenuOptions = function() {
-		const self = this;
-		const opts = [
-			self.menuActions[ 'open-chat' ],
-		];
-		return opts;
-	}
-	
-	ns.PresenceContact.prototype.handleAction = function( action, data ) {
-		const self = this;
-		const event = {
-			type : action,
-			data : {
-				clientId : self.clientId,
-				data     : data,
-			},
-		};
-		self.send( event );
-	}
-	
-})( library.view );
 
 (function( ns, undefined ) {
 	ns.PresenceRoom = function( conf ) {
@@ -2034,6 +1954,124 @@ library.view = library.view || {};
 	
 })( library.view );
 
+
+// PresenceContact
+(function( ns, undefiend ) {
+	ns.PresenceContact = function( conf, conn ) {
+		const self = this;
+		console.log( 'PresenceContact', conf );
+		self.type = 'contact';
+		self.data = conf.contact;
+		self.userId = conf.userId;
+		self.userLive = false;
+		self.contactLive = false;
+		self.isOnline = false;
+		
+		library.view.BaseContact.call( self, conf, conn );
+		
+		self.init();
+	}
+	
+	ns.PresenceContact.prototype = Object.create( library.view.BaseContact.prototype );
+	
+	ns.PresenceContact.prototype.buildElement = function() {
+		const self = this;
+		console.log( 'Presencecontact.buildElement', self.identity );
+		self.onlineStatus = friendUP.tool.uid( 'status' );
+		self.liveStatus = friendUP.tool.uid( 'live' );
+		self.msgStatus = friendUP.tool.uid( 'msg' );
+		const tmplId = 'presence-contact-tmpl';
+		const conf = {
+			clientId     : self.clientId,
+			avatarSrc    : self.identity.avatar,
+			statusId     : self.onlineStatus,
+			name         : self.identity.name,
+			liveStatusId : self.liveStatus,
+			msgWaitingId : self.msgStatus,
+		};
+		console.log( 'PresenceRoom.builDelement - conf', conf );
+		const container = document.getElementById( self.containerId );
+		const el = hello.template.getElement( tmplId, conf );
+		container.appendChild( el );
+	}
+	
+	ns.PresenceContact.prototype.init = function() {
+		const self = this;
+		console.log( 'PresenceContact.init', self );
+		self.buildStatus();
+		self.buildLive();
+		self.buildMsgWaiting();
+	}
+	
+	ns.PresenceContact.prototype.buildStatus = function() {
+		const self = this;
+		self.onlineStatus = new library.component.StatusIndicator({
+			containerId : self.onlineStatus,
+			type        : 'led',
+			cssClass    : 'led-online-status PadBorder',
+			statusMap   : {
+				offline   : 'Off',
+				online    : 'On',
+			},
+		});
+		self.handleOnline();
+	}
+	
+	ns.PresenceContact.prototype.buildLive = function() {
+		const self = this;
+		self.liveStatus = new library.component.StatusIndicator({
+			containerId : self.liveStatus,
+			type      : 'icon',
+			cssClass  : 'fa-video-camera',
+			statusMap : {
+				'empty'  : 'Off',
+				'other'  : 'Available',
+				'timeout': 'Notify',
+				'user'   : 'On',
+			},
+		});
+	}
+	
+	ns.PresenceContact.prototype.buildMsgWaiting = function() {
+		const self = this;
+		self.msgStatus = new library.component.StatusDisplay({
+			containerId : self.msgStatus,
+			type        : 'led',
+			cssClass    : 'led-unread-status',
+			statusMap   : {
+				'false'   : 'Off',
+				'true'    : 'Notify',
+			},
+			display : '',
+		});
+	}
+	
+	ns.PresenceContact.prototype.getMenuOptions = function() {
+		const self = this;
+		const opts = [
+			self.menuActions[ 'open-chat' ],
+			self.menuActions[ 'live-video' ],
+			self.menuActions[ 'live-audio' ],
+		];
+		return opts;
+	}
+	
+	ns.PresenceContact.prototype.handleOnline = function( isOnline ) {
+		const self = this;
+		isOnline = !!isOnline;
+		self.isOnline = isOnline;
+		if ( isOnline ) {
+			self.onlineStatus.set( 'online' );
+			self.onlineStatus.show();
+		} else {
+			self.onlineStatus.set( 'offline' );
+			self.onlineStatus.hide();
+		}
+	}
+	
+})( library.view );
+
+
 // TElegram
 (function( ns, undefined ) {
 	ns.Telegram = function( conf ) {
@@ -2045,6 +2083,8 @@ library.view = library.view || {};
 		
 		self.init();
 	}
+	
+	ns.Telegram.prototype = Object.create( library.view.BaseModule.prototype );
 	
 	// Public
 	

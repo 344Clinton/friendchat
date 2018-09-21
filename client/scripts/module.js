@@ -407,8 +407,13 @@ library.module = library.module || {};
 			data : clientId,
 		});
 		
-		self.contacts[ clientId ].close();
+		const contact = self.contacts[ clientId ];
+		if ( !contact )
+			return;
+		
 		delete self.contacts[ clientId ];
+		if ( contact.close )
+			contact.close();
 	}
 	
 	ns.BaseModule.prototype.setLocalData = function( data, callback ) {
@@ -488,8 +493,6 @@ library.module = library.module || {};
 		
 		self.type = 'presence';
 		self.roomRequests = {};
-		self.contactList = [];
-		self.relations = {};
 		self.init();
 	}
 	
@@ -813,26 +816,30 @@ library.module = library.module || {};
 	ns.Presence.prototype.handleContactInit = function( contacts ) {
 		const self = this;
 		console.log( 'handleContactInit', contacts );
-		self.relations = contacts;
 		const ids = Object.keys( contacts );
 		const list = ids.map( id => contacts[ id ]);
+		list.forEach( item => self.handleContactAdd( item ));
+		
+		/*
 		const cList = {
 			type : 'contact-list',
 			data : list,
 		};
 		self.toView( cList );
+		*/
 	}
 	
 	ns.Presence.prototype.handleContactList = function( list ) {
 		const self = this;
 		console.log( 'presence.handleContactList', list );
 		list.forEach( add );
+		/*
 		const cList = {
 			type : 'contact-list',
 			data : list,
 		};
 		self.toView( cList );
-		
+		*/
 		function add( con ) {
 			self.handleContactAdd( con );
 		}
@@ -842,10 +849,31 @@ library.module = library.module || {};
 		const self = this;
 		console.log( 'presence.handleContactAdd', contact );
 		let cId = contact.clientId;
-		if ( self.relations[ cId ])
+		let room = self.contacts[ cId ];
+		if ( room ) {
+			room.reconnect();
 			return;
+		}
 		
-		self.relations[ cId ] = contact;
+		const host = library.tool.buildDestination(
+			null,
+			self.module.host,
+			self.module.port,
+		);
+		
+		const conf = {
+			moduleId   : self.clientId,
+			contact    : contact,
+			parentConn : self.conn,
+			parentView : self.parentView,
+			host       : host,
+			user       : self.identity,
+			userId     : self.accountId,
+		};
+		
+		console.log( 'presencee.handleContactAdd - conf', conf );
+		room = new library.contact.PresenceContact( conf );
+		self.contacts[ cId ] = room;
 		const cAdd = {
 			type : 'contact-add',
 			data : contact,
@@ -856,15 +884,21 @@ library.module = library.module || {};
 	ns.Presence.prototype.handleContactRemove = function( clientId ) {
 		const self = this;
 		console.log( 'presence.handleContactRemove', clientId );
-		if ( !self.relations[ clientId ])
+		const contact = self.contacts[ clientId ];
+		if ( !contact )
 			return;
 		
-		delete self.relations[ clientId ];
+		delete self.contacts[ clientId ];
+		contact.close();
 		const cAdd = {
 			type : 'contact-remove',
 			data : clientId,
 		};
 		self.toView( cAdd );
+	}
+	
+	ns.Presence.prototype.addContact = function( contact ) {
+		const self = this;
 	}
 	
 	ns.Presence.prototype.handleIdentity = function( event ) {

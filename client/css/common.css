@@ -923,5 +923,6 @@ html body .hidden {
 }
 
 .item-menu {
-	align-self: stretch;
+	align-self  : stretch;
+	margin-left : 0.3em;
 }

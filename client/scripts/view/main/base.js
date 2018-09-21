@@ -25,7 +25,7 @@ library.view = library.view || {};
 
 // BASE CONTACT
 (function( ns, undefined ) {
-	ns.BaseContact = function( conf ) {
+	ns.BaseContact = function( conf, conn ) {
 		if ( !( this instanceof ns.BaseContact ))
 			return new ns.BaseContact( conf );
 		
@@ -39,7 +39,7 @@ library.view = library.view || {};
 		
 		self.conn = null;
 		
-		self.baseContactInit( conf.conn );
+		self.baseContactInit( conn || conf.conn );
 		
 		function eventSink() {
 			//console.log( 'BaseContact, eventSink', arguments );

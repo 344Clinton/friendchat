@@ -55,15 +55,6 @@ var friend = window.friend || {}; // already instanced stuff
 		eventsink,
 		onclose
 	) {
-		if ( !( this instanceof ns.View ))
-			return new ns.View(
-				htmlPath,
-				windowConf,
-				initData,
-				eventsink,
-				onclose
-			);
-		
 		const self = this;
 		EventEmitter.call( self, eventsink );
 		
