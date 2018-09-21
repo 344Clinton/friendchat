@@ -402,7 +402,6 @@ ns.Presence.prototype.handleInitialize = function( state ) {
 		bindServerConn( accId )
 		
 	self.account = state.account;
-	self.contacts = state.contacts || [];
 	self.client.setState( 'online', Date.now() );
 	self.updateClientAccount();
 	
@@ -481,7 +480,7 @@ ns.Presence.prototype.handleJoinedRoom = function( room ) {
 		return;
 	
 	const rid = room.clientId;
-	if ( self.rooms[ rid ])
+	if ( self.rooms[ rid ] || self.contacts[ rid ])
 		return;
 	
 	self.rooms[ rid ] = room;
@@ -538,12 +537,11 @@ ns.Presence.prototype.handleRoomClosed = function( roomId ) {
 ns.Presence.prototype.initializeContacts = function( contacts ) {
 	const self = this;
 	log( 'initializeContacts', contacts );
-	self.contacts = {};
 	let ids = Object.keys( contacts );
 	ids.forEach( id => {
-		self.contacts[ id ] = contacts[ id ];
+		let contact = contacts[ id ];
+		self.handleContactAdd( contact );
 	});
-	self.initClientContacts();
 }
 
 ns.Presence.prototype.handleContactList = function( list ) {
@@ -551,39 +549,53 @@ ns.Presence.prototype.handleContactList = function( list ) {
 	log( 'handleContactList', list );
 	list.forEach( add );
 	function add( con ) {
-		let cId = con.clientId;
-		if ( self.contacts[ cId ])
-			return;
-		
-		self.contacts[ cId ] = con;
+		self.handleContactAdd( con );
 	}
-	
-	const cList = {
-		type : 'contact-list',
-		data : list,
-	};
-	self.client.send( cList );
 }
 
 ns.Presence.prototype.handleContactAdd = function( identity ) {
 	const self = this;
 	log( 'handleContactAdd', identity );
 	const cId = identity.clientId;
-	if ( self.contacts[ cId ])
+	if ( self.contacts[ cId ]) {
+		log( 'already added', cId );
 		return;
+	}
 	
+	self.server.on( cId, toClient );
+	self.client.on( cId, toServer );
 	self.contacts[ cId ] = identity;
 	const cAdd = {
 		type : 'contact-add',
 		data : identity,
 	};
 	self.client.send( cAdd );
+	
+	function toClient( event ) {
+		log( 'toClient', event );
+		let forward = {
+			type : cId,
+			data : event,
+		};
+		self.client.send( forward );
+	}
+	
+	function toServer( event ) {
+		log( 'toServer', event );
+		let forward = {
+			type : cId,
+			data : event,
+		};
+		self.server.send( forward );
+	}
 }
 
 ns.Presence.prototype.handleContactRemove = function( clientId ) {
 	const self = this;
 	log( 'handleContactRemove', clientId );
 	delete self.contacts[ clientId ];
+	self.client.release( clientId );
+	self.server.release( clientId );
 	const cRemove = {
 		type : 'contact-remove',
 		data : clientId,

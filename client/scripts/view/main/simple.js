@@ -809,6 +809,9 @@ var hello = window.hello || {};
 	
 	ns.RecentItem.prototype.setLastEvent = function( historyEvent ) {
 		const self = this;
+		if ( !historyEvent || !historyEvent.data )
+			return;
+		
 		if ( !self.lastEvent )
 			self.setEvent( historyEvent );
 		
@@ -898,7 +901,7 @@ var hello = window.hello || {};
 		self.status = new library.component.StatusIndicator({
 			containerId : self.status,
 			type        : 'led',
-			cssClass    : 'recent-led-status PadBorder',
+			cssClass    : 'led-online-status PadBorder',
 			statusMap   : {
 				offline   : 'Off',
 				online    : 'On',
@@ -915,7 +918,7 @@ var hello = window.hello || {};
 		self.unread = new library.component.StatusDisplay({
 			containerId : self.unread,
 			type        : 'led',
-			cssClass    : 'recent-led-unread',
+			cssClass    : 'led-unread-status',
 			statusMap   : {
 				'false'   : 'Off',
 				'true'    : 'Notify',
@@ -1125,7 +1128,7 @@ var hello = window.hello || {};
 		const conf = {
 			containerId : self.status,
 			type        : 'led',
-			cssClass    : 'recent-led-participants PadBorder',
+			cssClass    : 'led-participants-status PadBorder',
 			statusMap   : {
 				empty   : 'Off',
 				users   : 'Available',
