@@ -686,8 +686,6 @@ library.module = library.module || {};
 	
 	ns.Presence.prototype.getTypeItem = function( cId, type ) {
 		const self = this;
-		const cId = conf.id;
-		const type = conf.type;
 		let item = null;
 		if ( type )
 			item = byType( cId, type );
