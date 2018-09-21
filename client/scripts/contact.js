@@ -1670,7 +1670,9 @@ library.contact = library.contact || {};
 		
 		if ( self.openLivePending ) {
 			self.openLivePending = false;
-			self.openLiveView();
+			let perms = self.livePermissions || null;
+			delete self.livePermissions;
+			self.setupLive( perms );
 		}
 	}
 	
@@ -1728,9 +1730,20 @@ library.contact = library.contact || {};
 		}
 	}
 	
-	ns.PresenceContact.prototype.openLiveView = function() {
+	ns.PresenceRoom.prototype.setupLive = function( permissions ) {
 		const self = this;
-		console.log( 'openLiveView' );
+		if ( !self.active ) {
+			self.livePermissions = permissions;
+			self.openLivePending = true;
+			self.activate();
+			return;
+		}
+		
+		const conf = {
+			permissions : permissions,
+		};
+		
+		self.joinLive( conf );
 	}
 	
 })( library.contact );
