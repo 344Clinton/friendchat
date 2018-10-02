@@ -1814,6 +1814,9 @@ ns.Treeroot.prototype.messagesToClient = function(
 	messages.forEach( toClient );
 	self.startMessageUpdates( contactId );
 	function toClient( msg ) {
+		if ( !msg )
+			return;
+		
 		self.toClientContact( msg, contact.clientId, socketId );
 	}
 }

@@ -1730,7 +1730,7 @@ library.contact = library.contact || {};
 		}
 	}
 	
-	ns.PresenceRoom.prototype.setupLive = function( permissions ) {
+	ns.PresenceContact.prototype.setupLive = function( permissions ) {
 		const self = this;
 		if ( !self.active ) {
 			self.livePermissions = permissions;

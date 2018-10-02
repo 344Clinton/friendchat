@@ -85,6 +85,7 @@ ns.Presence.prototype.init = function() {
 	
 	self.client.send({
 		type : 'initialize',
+		data : true,
 	});
 }
 
