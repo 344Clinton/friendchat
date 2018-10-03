@@ -416,6 +416,7 @@ ns.Presence.prototype.handleInitialize = function( state ) {
 		self.server.on( 'contact-list', contactList );
 		self.server.on( 'contact-add', contactAdd );
 		self.server.on( 'contact-remove', contactRemove );
+		self.server.on( 'contact-event', contactEvent );
 		
 		function toAccount( e ) { self.server.send( e ); }
 		function joined( e ) { self.handleJoinedRoom( e ); }
@@ -423,6 +424,12 @@ ns.Presence.prototype.handleInitialize = function( state ) {
 		function contactList( e ) { self.handleContactList( e ); }
 		function contactAdd( e ) { self.handleContactAdd( e ); }
 		function contactRemove( e ) { self.handleContactRemove( e ); }
+		function contactEvent( e ) {
+			self.client.send({
+				type : 'contact-event',
+				data : e,
+			});
+		}
 	}
 }
 

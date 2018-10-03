@@ -2001,6 +2001,10 @@ library.view = library.view || {};
 		self.buildStatus();
 		self.buildLive();
 		self.buildMsgWaiting();
+		
+		self.conn.on( 'online', isOnline );
+		
+		function isOnline( e ) { self.handleOnline( e ); }
 	}
 	
 	ns.PresenceContact.prototype.buildStatus = function() {
@@ -2058,6 +2062,7 @@ library.view = library.view || {};
 	
 	ns.PresenceContact.prototype.handleOnline = function( isOnline ) {
 		const self = this;
+		console.log( 'view.handleOnline', isOnline );
 		isOnline = !!isOnline;
 		self.isOnline = isOnline;
 		if ( isOnline ) {
