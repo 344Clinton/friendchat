@@ -48,6 +48,14 @@ library.contact = library.contact || {};
 	
 	// Public
 	
+	ns.Contact.prototype.handleEvent = function( event ) {
+		const self = this;
+		if ( !self.conn )
+			return;
+		
+		self.conn.handle( event );
+	}
+	
 	ns.Contact.prototype.getLastMessage = function() {
 		const self = this;
 		return self.lastMessage || null;
@@ -113,14 +121,6 @@ library.contact = library.contact || {};
 			name : null,
 			avatar : null,
 		};
-	}
-	
-	ns.Contact.prototype.handleEvent = function( event ) {
-		const self = this;
-		if ( !self.conn )
-			return;
-		
-		self.conn.handle( event );
 	}
 	
 	ns.Contact.prototype.doMessageIntercept = function( data ) {
@@ -1648,6 +1648,35 @@ library.contact = library.contact || {};
 		self.active = isActive;
 		if ( self.active )
 			self.sendInit();
+	}
+	
+	ns.PresenceContact.prototype.handleOnline = function( isOnline ) {
+		const self = this;
+		console.log( 'handleOnline', isOnline );
+		if ( self.isOnline === isOnline )
+			return;
+		
+		self.isOnline = isOnline;
+		let online = {
+			type : 'online',
+			data : isOnline,
+		};
+		self.toView( online );
+		
+		if ( isOnline )
+			self.toChat({
+				type : 'online',
+				data : {
+					clientId : self.clientId,
+					authed   : true,
+				},
+			});
+		else
+			self.toChat({
+				type : 'offline',
+				data : self.clientId,
+			});
+		
 	}
 	
 	ns.PresenceContact.prototype.sendInit = function() {

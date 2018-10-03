@@ -1081,6 +1081,7 @@ library.view = library.view || {};
 	
 	ns.UserCtrl.prototype.handleOnline = function( data ) {
 		const self = this;
+		console.log( 'UserCtrl.handleOnline', data );
 		const uid = data.clientId;
 		const user = self.users[ uid ];
 		if ( !user )

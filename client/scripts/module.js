@@ -651,6 +651,7 @@ library.module = library.module || {};
 		self.conn.on( 'contact-list', contactList );
 		self.conn.on( 'contact-add', contactAdd );
 		self.conn.on( 'contact-remove', contactRemove );
+		self.conn.on( 'contact-event', contactEvent );
 		self.conn.on( 'identity', handleIdentity );
 		self.conn.on( 'invite', handleInvite );
 		self.conn.on( 'rooms', setupRooms );
@@ -666,6 +667,7 @@ library.module = library.module || {};
 		function contactList( e ) { self.handleContactList( e ); }
 		function contactAdd( e ) { self.handleContactAdd( e ); }
 		function contactRemove( e ) { self.handleContactRemove( e ); }
+		function contactEvent( e ) { self.handleContactEvent( e ); }
 		function handleIdentity( e ) { self.handleIdentity( e ); }
 		function handleInvite( e ) { self.handleInvite( e ); }
 		function setupRooms( e ) { self.setupRooms( e ); }
@@ -970,6 +972,18 @@ library.module = library.module || {};
 		self.toView( cAdd );
 	}
 	
+	ns.Presence.prototype.handleContactEvent = function( wrap ) {
+		const self = this;
+		console.log( 'handleContactEvent', wrap );
+		let cId = wrap.contactId;
+		let event = wrap.event;
+		let contact = self.contacts[ cId ];
+		if ( !contact )
+			return;
+		
+		contact.handleEvent( event );
+	}
+	
 	ns.Presence.prototype.addContact = function( contact ) {
 		const self = this;
 	}
@@ -989,10 +1003,7 @@ library.module = library.module || {};
 		if ( !rooms )
 			return;
 		
-		rooms.forEach( add );
-		function add( room ) {
-			self.addRoom( room );
-		}
+		rooms.forEach( room => self.addRoom( room ));
 	}
 	
 	ns.Presence.prototype.handleJoin = function( conf ) {
