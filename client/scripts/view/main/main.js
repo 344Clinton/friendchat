@@ -190,6 +190,21 @@ library.view = library.view || {};
 			},
 			display : '',
 		});
+		
+		self.presence = new library.component.StatusIndicator({
+			containerId : self.presence,
+			type      : 'icon',
+			cssClass  : 'fa-user',
+			statusMap : {
+				offline : 'Off',
+				online  : 'On'
+			}
+		});
+		self.presence.set( self.online ? 'online' : 'offline' );
+		
+		self.bindEvents();
+		self.bindView();
+		
 		if ( !!self.data.unreadMessages )
 			window.setTimeout( msgWaiting, 250 );
 		
@@ -205,20 +220,6 @@ library.view = library.view || {};
 			}
 			self.handleMessageWaiting( state );
 		}
-		
-		self.presence = new library.component.StatusIndicator({
-			containerId : self.presence,
-			type : 'icon',
-			cssClass : 'fa-user',
-			statusMap : {
-				offline : 'Off',
-				online : 'On'
-			}
-		});
-		self.presence.set( self.online ? 'online' : 'offline' );
-		
-		self.bindEvents();
-		self.bindView();
 	}
 	
 	ns.TreerootContact.prototype.buildElement = function() {
@@ -1447,13 +1448,13 @@ library.view = library.view || {};
 		contact.close();
 	}
 	
-	ns.Presence.prototype.addContact = function( identity ) {
+	ns.Presence.prototype.addContact = function( conf ) {
 		const self = this;
 		console.log( 'addContact', {
-			identity : identity,
+			conf     : conf,
 			userId   : self.userId,
 		});
-		const cId = identity.clientId;
+		const cId = conf.clientId;
 		if ( cId === self.userId ) {
 			console.log( 'Presence.addContact - is self, not adding' );
 			return;
@@ -1468,10 +1469,7 @@ library.view = library.view || {};
 			menuActions : self.menuActions,
 			containerId : self.contactItemsId,
 			userId      : self.userId,
-			contact     : {
-				clientId  : cId,
-				identity  : identity,
-			},
+			contact     : conf,
 		};
 		const contact = new library.view.PresenceContact( contactConf, window.View );
 		self.contacts[ cId ] = contact;
@@ -1959,7 +1957,7 @@ library.view = library.view || {};
 (function( ns, undefiend ) {
 	ns.PresenceContact = function( conf, conn ) {
 		const self = this;
-		console.log( 'PresenceContact', conf );
+		console.log( 'view.PresenceContact', conf );
 		self.type = 'contact';
 		self.data = conf.contact;
 		self.userId = conf.userId;
@@ -1969,14 +1967,14 @@ library.view = library.view || {};
 		
 		library.view.BaseContact.call( self, conf, conn );
 		
-		self.init();
+		self.init( conf.contact );
 	}
 	
 	ns.PresenceContact.prototype = Object.create( library.view.BaseContact.prototype );
 	
 	ns.PresenceContact.prototype.buildElement = function() {
 		const self = this;
-		console.log( 'Presencecontact.buildElement', self.identity );
+		console.log( 'PresenceContact.buildElement', self.identity );
 		self.onlineStatus = friendUP.tool.uid( 'status' );
 		self.liveStatus = friendUP.tool.uid( 'live' );
 		self.msgStatus = friendUP.tool.uid( 'msg' );
@@ -1995,16 +1993,38 @@ library.view = library.view || {};
 		container.appendChild( el );
 	}
 	
-	ns.PresenceContact.prototype.init = function() {
+	ns.PresenceContact.prototype.init = function( contact ) {
 		const self = this;
 		console.log( 'PresenceContact.init', self );
+		self.unreadMessages = contact.relation.unreadMessages || 0;
+		self.lastMessage = contact.relation.lastMessage || null;
+		
 		self.buildStatus();
 		self.buildLive();
 		self.buildMsgWaiting();
 		
 		self.conn.on( 'online', isOnline );
+		self.conn.on( 'msg-waiting', msgWaiting );
 		
 		function isOnline( e ) { self.handleOnline( e ); }
+		function msgWaiting( e ) { self.handleMsgWaiting( e ); }
+		
+		if ( !!self.unreadMessages )
+			window.setTimeout( unreadMEssages, 250 );
+		
+		function unreadMEssages() {
+			const state = {
+				unread : self.unreadMessages,
+			};
+			if ( self.lastMessage ) {
+				const lm = self.lastMessage.data;
+				state.message = lm.message;
+				state.from = !!lm.from;
+				state.time = lm.time;
+			}
+			console.log( 'unreadMEssages', state );
+			self.handleMsgWaiting( state );
+		}
 	}
 	
 	ns.PresenceContact.prototype.buildStatus = function() {
@@ -2072,6 +2092,30 @@ library.view = library.view || {};
 			self.onlineStatus.set( 'offline' );
 			self.onlineStatus.hide();
 		}
+	}
+	
+	ns.PresenceContact.prototype.handleMsgWaiting = function( state ) {
+		const self = this;
+		console.log( 'PC.handleMsgWaiting', state );
+		if ( state.unread ) {
+			self.unreadMessages = state.unread;
+			state.isWaiting = true;
+		}
+		else {
+			if ( state.isWaiting )
+				self.unreadMessages++;
+			else
+				self.unreadMessages = 0;
+		}
+		
+		state.unread = self.unreadMessages;
+		self.msgStatus.set( state.isWaiting ? 'true' : 'false' );
+		self.msgStatus.setDisplay( self.unreadMessages );
+		self.emit( 'msg-waiting', state );
+		if ( state.isWaiting )
+			self.msgStatus.show();
+		else
+			self.msgStatus.hide();
 	}
 	
 })( library.view );

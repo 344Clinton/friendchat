@@ -67,7 +67,7 @@ library.view = library.view || {};
 	
 	ns.BaseContact.prototype.getUnreadMessages = function() {
 		const self = this;
-		return 0;
+		self.unreadMessages || 0;
 	}
 	
 	ns.BaseContact.prototype.getLastMessage = function() {

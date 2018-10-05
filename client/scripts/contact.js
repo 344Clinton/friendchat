@@ -35,13 +35,13 @@ library.contact = library.contact || {};
 		self.parentPath = conf.parentPath || '';
 		self.clientId = self.data.clientId;
 		self.displayName = self.data.displayName || self.data.name;
+		self.lastMessage = self.data.lastMessage;
+		self.chatCrypts = {};
+		self.encryptMessages = false;
 		self.conn = null;
 		self.view = null;
 		self.chat = null;
 		self.live = null;
-		self.chatCrypts = {};
-		self.encryptMessages = false;
-		self.lastMessage = self.data.lastMessage;
 		
 		self.contactInit( conf.parentConn, conf.parentView );
 	}
@@ -1223,6 +1223,7 @@ library.contact = library.contact || {};
 	
 	ns.PresenceRoom.prototype.handleChat = function( event ) {
 		const self = this;
+		console.log( 'handleChat', event );
 		const chat = {
 			type : 'chat',
 			data : event,
@@ -1442,7 +1443,7 @@ library.contact = library.contact || {};
 		self.identity = {
 			clientId : self.clientId,
 			name     : self.data.name || null,
-			avatar   : null,
+			avatar   : self.data.avatar || null,
 		};
 	}
 	
@@ -1577,8 +1578,9 @@ library.contact = library.contact || {};
 (function( ns, undefined ) {
 	ns.PresenceContact = function( conf ) {
 		const self = this;
+		console.log( 'PresenceContact', conf );
 		self.type = 'presence';
-		self.data = conf.contact;
+		self.data = conf.contact.identity;
 		self.host = conf.host;
 		self.user = conf.user;
 		self.userId = conf.userId;
@@ -1591,7 +1593,7 @@ library.contact = library.contact || {};
 		self.users = {};
 		self.peers = [];
 		
-		self.init();
+		self.init( conf.contact );
 	}
 	
 	ns.PresenceContact.prototype = Object.create( ns.PresenceRoom.prototype );
@@ -1607,8 +1609,16 @@ library.contact = library.contact || {};
 		self.sendInit();
 	}
 	
-	ns.PresenceContact.prototype.init = function() {
+	ns.PresenceContact.prototype.init = function( contact ) {
 		const self = this;
+		console.log( 'presenceContact.init', contact );
+		let relation = contact.relation;
+		if ( relation )
+			self.lastMessage = relation.lastMessage;
+		
+		self.identities[ self.user.clientId ] = self.user;
+		self.identities[ self.identity.clientId ] = self.identity;
+		
 		self.conn.on( 'active', active );
 		self.conn.on( 'initialize', init );
 		self.conn.on( 'settings', settings );
