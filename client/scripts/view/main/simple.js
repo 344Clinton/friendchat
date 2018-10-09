@@ -849,9 +849,8 @@ var hello = window.hello || {};
 		self.source.on( 'message', message );
 		self.source.on( 'msg-waiting', msgWaiting );
 		const lastMessage = self.source.getLastMessage();
-		if ( lastMessage ) {
+		if ( lastMessage )
 			self.setMessage( lastMessage.data );
-		}
 		
 		function message( e ) { self.handleMessage( e ); }
 		function msgWaiting( e ) { self.handleMsgWaiting( e ); }
@@ -951,6 +950,7 @@ var hello = window.hello || {};
 	
 	ns.RecentItem.prototype.handleMsgWaiting = function( state ) {
 		const self = this;
+		console.log( 'RecentItem.handleMsgWaiting', state );
 		self.unread.set( state.isWaiting ? 'true' : 'false' );
 		self.unread.setDisplay( state.unread || 1 );
 		if ( state.isWaiting )

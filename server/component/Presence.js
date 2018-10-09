@@ -561,10 +561,10 @@ ns.Presence.prototype.handleContactList = function( list ) {
 	}
 }
 
-ns.Presence.prototype.handleContactAdd = function( identity ) {
+ns.Presence.prototype.handleContactAdd = function( contact ) {
 	const self = this;
-	log( 'handleContactAdd', identity );
-	const cId = identity.clientId;
+	log( 'handleContactAdd', contact );
+	const cId = contact.clientId;
 	if ( self.contacts[ cId ]) {
 		log( 'already added', cId );
 		return;
@@ -572,10 +572,10 @@ ns.Presence.prototype.handleContactAdd = function( identity ) {
 	
 	self.server.on( cId, toClient );
 	self.client.on( cId, toServer );
-	self.contacts[ cId ] = identity;
+	self.contacts[ cId ] = contact;
 	const cAdd = {
 		type : 'contact-add',
-		data : identity,
+		data : contact,
 	};
 	self.client.send( cAdd );
 	
