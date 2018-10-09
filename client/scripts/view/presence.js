@@ -266,22 +266,14 @@ library.view = library.view || {};
 		
 		// message builder
 		self.msgBuilder = new library.component.MsgBuilder(
+			self.conn,
 			'messages',
 			self.userId,
 			self.users,
-			onMsgEdit,
 			self.parser,
 			self.linkExpand,
 			friend.template
 		);
-		
-		function onMsgEdit( event ) {
-			const edit = {
-				type : 'edit',
-				data : event,
-			};
-			self.sendChatEvent( edit );
-		}
 		
 		// multiline input
 		const inputConf = {
@@ -1290,25 +1282,26 @@ library.view = library.view || {};
 // MsgBuilder
 (function( ns, undefined ) {
 	ns.MsgBuilder = function(
+		conn,
 		containerId,
 		userId,
 		users,
-		onEdit,
 		parser,
 		linkExpand,
 		templateManager
 	) {
 		const self = this;
+		self.conn = conn;
 		self.containerId = containerId;
 		self.userId = userId;
 		self.users = users;
-		self.onEdit = onEdit;
 		self.parser = parser || null;
 		self.linkEx = linkExpand || null;
 		self.template = templateManager;
 		
 		self.envelopes = {};
 		self.envelopeOrder = [];
+		self.supressConfirm = false;
 		
 		self.init();
 	}
@@ -1405,15 +1398,16 @@ library.view = library.view || {};
 		}
 		
 		function saveEdit( newMsg ) {
-			if ( !self.onEdit )
-				return;
-			
 			const edit = {
-				msgId   : itemId,
-				message : newMsg,
-				reson   : null,
+				type : 'edit',
+				data : {
+					msgId   : itemId,
+					message : newMsg,
+					reson   : null,
+				},
 			};
-			self.onEdit( edit );
+			
+			self.send( edit );
 		}
 		
 		function close() {
@@ -1458,6 +1452,7 @@ library.view = library.view || {};
 			delete self.envelopeUpdate;
 		}
 		
+		delete self.conn;
 		delete self.userId;
 		delete self.users;
 		delete self.onEdit;
@@ -1557,6 +1552,7 @@ library.view = library.view || {};
 		const el = self.buildMsg( conf );
 		envelope.lastSpeakerId = event.fromId;
 		self.addItem( el, envelope );
+		self.confirmEvent( 'message', event.msgId );
 		return el;
 	}
 	
@@ -1574,15 +1570,21 @@ library.view = library.view || {};
 	
 	ns.MsgBuilder.prototype.handleLog = function( log ) {
 		const self = this;
+		console.log( 'handleLog', log );
 		let events = log.data.events;
 		let newIds = log.data.ids;
 		if ( newIds )
 			self.users.addIdentities( newIds );
-			
+		
+		self.supressConfirm = true;
 		if ( 'before' === log.type )
 			self.handleLogBefore( events );
 		else
 			self.handleLogAfter( events );
+		
+		self.supressConfirm = false;
+		let lMId = self.getLastMsgId();
+		self.confirmEvent( 'message', lMId );
 	}
 	
 	ns.MsgBuilder.prototype.handleLogBefore = function( items ) {
@@ -1639,13 +1641,11 @@ library.view = library.view || {};
 	
 	ns.MsgBuilder.prototype.handleLogAfter = function( items ) {
 		const self = this;
+		console.log( 'handleLogAfter' );
 		if ( !items )
 			return;
 		
-		items.forEach( handle );
-		function handle( item ) {
-			self.handle( item );
-		}
+		items.forEach( item => self.handle( item ));
 	}
 	
 	ns.MsgBuilder.prototype.isLastSpeaker = function( event, envelope ) {
@@ -1866,6 +1866,35 @@ library.view = library.view || {};
 			return View.i18n( 'i18n_yesterday' );
 		
 		return time.toLocaleDateString();
+	}
+	
+	ns.MsgBuilder.prototype.confirmEvent = function( type, eventId ) {
+		const self = this;
+		console.log( 'confirmEvent', {
+			eventId : eventId,
+			supress : self.supressConfirm,
+		});
+		if ( self.supressConfirm )
+			return;
+		
+		const confirm = {
+			type : 'confirm',
+			data : {
+				type    : type,
+				eventId : eventId,
+			},
+		};
+		self.send( confirm );
+	}
+	
+	ns.MsgBuilder.prototype.send = function( event ) {
+		const self = this;
+		console.log( 'MsgBuilder.send', event );
+		const wrap = {
+			type : 'chat',
+			data : event,
+		};
+		self.conn.send( wrap );
 	}
 	
 })( library.component );
