@@ -46,8 +46,7 @@ to listeners registered through this interface
 	
 	// Added to objects public interface
 	
-	ns.EventEmitter.prototype.on = function( event, listener )
-	{
+	ns.EventEmitter.prototype.on = function( event, listener ) {
 		var self = this;
 		var id = friendUP.tool.uid( 'listener' );
 		var listenerIds = self.eventToListener[ event ];
@@ -61,8 +60,7 @@ to listeners registered through this interface
 		return id;
 	}
 	
-	ns.EventEmitter.prototype.once = function( event, listener )
-	{
+	ns.EventEmitter.prototype.once = function( event, listener ) {
 		var self = this;
 		var onceieId = self.on( event, onceie );
 		
@@ -73,8 +71,7 @@ to listeners registered through this interface
 		}
 	}
 	
-	ns.EventEmitter.prototype.off = function( listenerId )
-	{
+	ns.EventEmitter.prototype.off = function( listenerId ) {
 		var self = this;
 		var listener = self.eventListeners[ listenerId ];
 		if ( !listener )
@@ -86,8 +83,7 @@ to listeners registered through this interface
 		// remove from events listener id list
 		var events = Object.keys( self.eventToListener );
 		events.some( searchListenerIdList );
-		function searchListenerIdList( event )
-		{
+		function searchListenerIdList( event ) {
 			var listenerIds = self.eventToListener[ event ];
 			var index = listenerIds.indexOf( listenerId );
 			if ( index === -1 )
@@ -97,28 +93,24 @@ to listeners registered through this interface
 			return true;
 		}
 		
-		function removeListener( event, index )
-		{
+		function removeListener( event, index ) {
 			self.eventToListener[ event ].splice( index, 1 );
 		}
 	}
 	
-	ns.EventEmitter.prototype.release = function( type )
-	{
+	ns.EventEmitter.prototype.release = function( type ) {
 		var self = this;
 		if ( !type )
 			all();
 		else
 			ofType( type );
 		
-		function all()
-		{
+		function all() {
 			self.eventListeners = {};
 			self.eventToListener = {};
 		}
 		
-		function ofType( type )
-		{
+		function ofType( type ) {
 			var lids = self.eventToListener[ type ];
 			if ( !lids || !lids.length )
 				return;
@@ -126,8 +118,7 @@ to listeners registered through this interface
 			lids.forEach( remove );
 			delete self.eventToListener[ type ];
 			
-			function remove( lid )
-			{
+			function remove( lid ) {
 				delete self.eventListeners[ lid ];
 			}
 		}
@@ -136,8 +127,7 @@ to listeners registered through this interface
 	// emit can take any number of arguments
 	// the first MUST be the event type / listener id
 	// all extra arguments will be passed on to the handler
-	ns.EventEmitter.prototype.emit = function()
-	{
+	ns.EventEmitter.prototype.emit = function() {
 		var self = this;
 		var args = self._getArgs( arguments );
 		var event = args.shift();
@@ -150,8 +140,7 @@ to listeners registered through this interface
 		}
 		
 		listenerIds.forEach( emit );
-		function emit( listenerId )
-		{
+		function emit( listenerId ) {
 			var listener = self.eventListeners[ listenerId ];
 			if ( 'function' !== typeof( listener )) {
 				if ( self._eventSink )
@@ -163,15 +152,13 @@ to listeners registered through this interface
 			listener.apply( null, args );
 		}
 		
-		function emitOnDefault( type, args )
-		{
+		function emitOnDefault( type, args ) {
 			args.unshift( type );
 			self._eventSink.apply( null, args );
 		}
 	}
 	
-	ns.EventEmitter.prototype.closeEventEmitter = function()
-	{
+	ns.EventEmitter.prototype.closeEventEmitter = function() {
 		var self = this;
 		self.release();
 		delete self._eventSink;
@@ -179,8 +166,7 @@ to listeners registered through this interface
 	
 	// Private
 	
-	ns.EventEmitter.prototype._eventEmitterInit = function()
-	{
+	ns.EventEmitter.prototype._eventEmitterInit = function() {
 		var self = this;
 		// dont remove this, js is weird
 	}

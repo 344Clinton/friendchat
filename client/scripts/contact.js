@@ -533,6 +533,7 @@ library.contact = library.contact || {};
 		self.onlineList = [];
 		self.users = {};
 		self.peers = [];
+		self.isActive = false;
 		
 		self.init();
 	}
@@ -559,9 +560,11 @@ library.contact = library.contact || {};
 		if ( self.live )
 			return; // we already are in a live _in this room_
 		
+		console.log( 'joinLive', self.identity );
 		conf = conf || {};
 		conf.roomId = self.clientId;
 		conf.roomName = self.identity.name;
+		conf.isPrivate = self.isPrivate || false;
 		conf.guestAvatar = self.guestAvatar;
 		if ( self.settings.isStream )
 			conf.isStream = true;
@@ -601,7 +604,6 @@ library.contact = library.contact || {};
 			self.liveToServer( leave );
 		}
 		
-		// event sink
 		function liveToServer( type, data ) {
 			const event = {
 				type : type,
@@ -643,6 +645,13 @@ library.contact = library.contact || {};
 			self.settingsView.close();
 		
 		delete self.settings;
+	}
+	
+	
+	ns.PresenceRoom.prototype.setActive = function( isActive ) {
+		const self = this;
+		self.isActive = isActive;
+		self.sendActive();
 	}
 	
 	// Private
@@ -704,6 +713,39 @@ library.contact = library.contact || {};
 		function leave( e ) { self.leaveRoom( e ); }
 		
 	}
+	
+	
+	ns.PresenceRoom.prototype.updateActive = function() {
+		const self = this;
+		let isActive = false;
+		if ( self.chatView || self.liveView )
+			isActive = true;
+		
+		if ( isActive === self.isActive )
+			return;
+		
+		self.isActive = isActive;
+		self.sendActive();
+	}
+	
+	ns.PresenceRoom.prototype.sendActive = function() {
+		const self = this;
+		console.log( 'sendActive', self.isActive );
+		const active = {
+			type : 'active',
+			data : {
+				isActive : self.isActive,
+				time     : Date.now(),
+			},
+		};
+		self.send( active );
+	}
+	
+	ns.PresenceRoom.prototype.handleActive = function( event ) {
+		const self = this;
+		console.log( 'PresenceRoom.handleActive - NYI', event );
+	}
+	
 	
 	ns.PresenceRoom.prototype.persistRoom = function( name ) {
 		const self = this;
@@ -817,6 +859,7 @@ library.contact = library.contact || {};
 		
 		self.chatView.close();
 		self.chatView = null;
+		self.updateActive();
 	}
 	
 	ns.PresenceRoom.prototype.leaveRoom = function() {
@@ -874,6 +917,8 @@ library.contact = library.contact || {};
 			delete self.goLivePending;
 			self.joinLive( liveConf );
 		}
+		
+		self.updateActive();
 		
 		function getSelf() {
 			return self.users[ self.userId ];
@@ -1525,6 +1570,7 @@ library.contact = library.contact || {};
 			type : 'user-leave',
 		};
 		self.liveToView( userLeave );
+		self.updateActive();
 	}
 	
 	ns.PresenceRoom.prototype.handleCloseLive = function( liveId ) {
@@ -1587,6 +1633,7 @@ library.contact = library.contact || {};
 		
 		ns.Contact.call( self, conf );
 		
+		self.isPrivate = true;
 		self.settings = null;
 		self.identities = {};
 		self.onlineList = [];
@@ -1602,12 +1649,22 @@ library.contact = library.contact || {};
 	
 	ns.PresenceContact.prototype.reconnect = function() {
 		const self = this;
-		console.log( 'reconnect', self.active );
-		if ( !self.active )
+		console.log( 'reconnect', self.isOpen );
+		if ( !self.isOpen )
 			return;
 		
 		self.sendInit();
 	}
+	
+	ns.PresenceContact.prototype.getInviteToken = function( type, callback ) {
+		const self = this;
+		if ( callback )
+			callback( null );
+		
+		return false;
+	}
+	
+	// Private
 	
 	ns.PresenceContact.prototype.init = function( contact ) {
 		const self = this;
@@ -1619,7 +1676,7 @@ library.contact = library.contact || {};
 		self.identities[ self.user.clientId ] = self.user;
 		self.identities[ self.identity.clientId ] = self.identity;
 		
-		self.conn.on( 'active', active );
+		self.conn.on( 'open', open );
 		self.conn.on( 'initialize', init );
 		self.conn.on( 'settings', settings );
 		self.conn.on( 'identity', identity );
@@ -1628,7 +1685,7 @@ library.contact = library.contact || {};
 		self.conn.on( 'online', online );
 		self.conn.on( 'offline', offline );
 		
-		function active( e ) { self.handleActive( e ); }
+		function open( e ) { self.handleOpen( e ); }
 		function init( e ) { self.handleInitializeContact( e ); }
 		function settings( e ) { self.handleSettings( e ); }
 		function identity( e ) { self.handleIdentity( e ); }
@@ -1638,25 +1695,25 @@ library.contact = library.contact || {};
 		function offline( e ) { self.handleOffline( e ); }
 		
 		self.bindView();
-		self.active = false;
+		self.isOpen = false;
 	}
 	
-	ns.PresenceContact.prototype.activate = function() {
+	ns.PresenceContact.prototype.open = function() {
 		const self = this;
 		self.send({
-			type : 'activate',
+			type : 'open',
 			data : null,
 		});
 	}
 	
-	ns.PresenceContact.prototype.handleActive = function( isActive ) {
+	ns.PresenceContact.prototype.handleOpen = function( isOpen ) {
 		const self = this;
-		console.log( 'handleActive', isActive );
-		if ( self.active === isActive )
+		console.log( 'handleOpen', isOpen );
+		if ( self.isOpen === isOpen )
 			return;
 		
-		self.active = isActive;
-		if ( self.active )
+		self.isOpen = isOpen;
+		if ( self.isOpen )
 			self.sendInit();
 	}
 	
@@ -1686,7 +1743,6 @@ library.contact = library.contact || {};
 				type : 'offline',
 				data : self.clientId,
 			});
-		
 	}
 	
 	ns.PresenceContact.prototype.sendInit = function() {
@@ -1700,7 +1756,7 @@ library.contact = library.contact || {};
 	ns.PresenceContact.prototype.handleInitializeContact = function( state ) {
 		const self = this;
 		console.log( 'handleInitializeContact', state );
-		self.active = true;
+		self.isOpen = true;
 		self.handleInitialize( state );
 		if ( self.openChatPending ) {
 			self.openChatPending = false;
@@ -1717,12 +1773,11 @@ library.contact = library.contact || {};
 	
 	ns.PresenceContact.prototype.openChat = function() {
 		const self = this;
-		console.log( 'PResenceCOntact.openChat', self.active );
-		if ( !self.active ) {
+		console.log( 'PResenceCOntact.openChat', self.isOpen );
+		if ( !self.isOpen ) {
 			self.openChatPending = true;
-			self.activate();
-		}
-		else
+			self.open();
+		} else
 			self.openChatView();
 	}
 	
@@ -1755,6 +1810,8 @@ library.contact = library.contact || {};
 		self.chatView.on( 'chat', chat );
 		self.chatView.on( 'live-upgrade', goLive );
 		
+		self.updateActive();
+		
 		function eventSink( e ) { console.log( 'unhandled chat view event', e ); }
 		function onClose( e ) {
 			self.closeChat();
@@ -1771,10 +1828,10 @@ library.contact = library.contact || {};
 	
 	ns.PresenceContact.prototype.setupLive = function( permissions ) {
 		const self = this;
-		if ( !self.active ) {
+		if ( !self.isOpen ) {
 			self.livePermissions = permissions;
 			self.openLivePending = true;
-			self.activate();
+			self.open();
 			return;
 		}
 		

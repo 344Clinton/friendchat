@@ -794,15 +794,16 @@ library.rtc = library.rtc || {};
 		}
 		
 		let roomId = null;
-		if ( 1 === self.sessionIds.length ) {
-			roomId = self.sessionIds[ 0 ];
+		let groups = self.getGroupLive();
+		if ( 1 === groups.length ) {
+			roomId = groups[ 0 ];
 			doInvite( roomId );
 		} else {
-			askSpecifyRoom();
+			askSpecifyRoom( groups );
 		}
 		
 		function askSpecifyRoom() {
-			let roomMetas = self.sessionIds.map( buildMeta );
+			let roomMetas = groups.map( buildMeta );
 			let conf = {
 				sessions : roomMetas,
 				onselect : onSelect,
@@ -851,7 +852,7 @@ library.rtc = library.rtc || {};
 		const localHost = self.service.getHost();
 		api.Say( 'Live invite received', { i : invite, 'if' : inviteFrom, s : selfie });
 		const message = inviteFrom.name
-				+ ' ' + Application.i18n('i18n_has_invited_you_to_live');
+				+ ' ' + Application.i18n( 'i18n_has_invited_you_to_live' );
 		const conf = {
 			message       : message,
 			activeSession : !!self.session,
@@ -945,6 +946,20 @@ library.rtc = library.rtc || {};
 	ns.RtcControl.prototype.init = function() {
 		var self = this;
 		
+	}
+	
+	ns.RtcControl.prototype.getGroupLive = function() {
+		const self = this;
+		console.log( 'getGroupLive', self.sessions );
+		let groupSessions = self.sessionIds.filter( sId => {
+			let sess = self.sessions[ sId ];
+			if ( !sess || sess.isPrivate )
+				return false;
+			
+			return true;
+		});
+		
+		return groupSessions;
 	}
 	
 	ns.RtcControl.prototype.askHost = function( contacts, selfie ) {
@@ -2084,6 +2099,7 @@ library.rtc = library.rtc || {};
 		
 		self.id = null; // set by initialize / open event
 		self.roomId = conf.roomId;
+		self.isPrivate = conf.isPrivate;
 		self.conf = conf;
 		self.onclose = onclose;
 		self.sessionclose = sessionClose;
@@ -2138,6 +2154,10 @@ library.rtc = library.rtc || {};
 			self.shareView = null;
 		}
 		
+		delete self.conf;
+		delete self.isPrivate;
+		delete self.roomId;
+		
 		if ( sessionclose )
 			sessionclose();
 		
@@ -2164,6 +2184,7 @@ library.rtc = library.rtc || {};
 			guestAvatar : viewConf.guestAvatar,
 			identities  : init.identities,
 			roomName    : viewConf.roomName,
+			isPrivate   : viewConf.isPrivate,
 			logTail     : roomConf.logTail,
 			rtcConf     : {
 				ICE         : roomConf.ICE,

@@ -1381,12 +1381,12 @@ library.view = library.view || {};
 	
 	ns.Presence.prototype.handleRoomJoin = function( conf ) {
 		const self = this;
-		console.log( 'handleRoomJoin', conf );
 		if ( conf.isPrivate ) {
 			self.handleContactJoin( conf );
 			return;
 		}
 		
+		console.log( 'handleRoomJoin', conf );
 		const cId = conf.clientId;
 		if ( self.rooms[ cId ]) {
 			console.log( 'handleRoomJoin - already added', conf );
@@ -1431,7 +1431,6 @@ library.view = library.view || {};
 	
 	ns.Presence.prototype.handleContactAdd = function( contact ) {
 		const self = this;
-		console.log( 'handleContactAdd', contact );
 		self.addContact( contact );
 		
 	}

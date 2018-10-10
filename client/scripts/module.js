@@ -782,10 +782,12 @@ library.module = library.module || {};
 		if ( !item )
 			return null;
 		
+		console.log( 'handleServiceOnGetInfo', item );
 		return {
-			id       : clientId,
-			name     : item.identity.name,
-			peers    : item.peers,
+			id        : clientId,
+			name      : item.identity.name,
+			isPrivate : item.identity.isPrivate,
+			peers     : item.peers,
 		};
 	}
 	
@@ -1203,6 +1205,9 @@ library.module = library.module || {};
 			
 			room.getInviteToken( null, getBack );
 			function getBack( inv ) {
+				if ( !inv )
+					return;
+				
 				//const invite = self.buildInvite( type, roomId, inv.token );
 				contact.invite( inv.data );
 			}
