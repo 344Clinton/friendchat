@@ -756,6 +756,7 @@ var hello = window.hello || {};
 		self.onActive = onActive;
 		
 		self.lastMessage = null;
+		self.sourceIds = [];
 		
 		self.init( containerId );
 	}
@@ -766,19 +767,24 @@ var hello = window.hello || {};
 	
 	ns.RecentItem.prototype.close = function() {
 		const self = this;
+		console.log( 'RecentItem.close', self.clientId );
 		if ( self.status )
 			self.status.close();
 		
 		if ( self.unread )
 			self.unread.close();
 		
+		if ( self.source )
+			self.releaseSource();
+		
 		delete self.onActive;
 		delete self.containerId;
 		delete self.template;
-		delete self.source;
 		delete self.actions;
 		delete self.unread;
 		delete self.status;
+		delete self.source;
+		delete self.eventMap;
 		delete self.moduleId;
 		delete self.clientId;
 		delete self.id;
@@ -846,8 +852,11 @@ var hello = window.hello || {};
 		self.bindElement();
 		self.buildIndicators();
 		
-		self.source.on( 'message', message );
-		self.source.on( 'msg-waiting', msgWaiting );
+		const msgId = self.source.on( 'message', message );
+		const waitId = self.source.on( 'msg-waiting', msgWaiting );
+		self.sourceIds.push( msgId );
+		self.sourceIds.push( waitId );
+		
 		const lastMessage = self.source.getLastMessage();
 		if ( lastMessage )
 			self.setMessage( lastMessage.data );
@@ -867,6 +876,17 @@ var hello = window.hello || {};
 			self.handleMenuClick();
 		}
 		
+	}
+	
+	ns.RecentItem.prototype.releaseSource = function() {
+		const self = this;
+		console.log( 'releaseSource', self.sourceIds );
+		if ( !self.source || !self.sourceIds )
+			return;
+		
+		self.sourceIds.forEach( id => self.source.off( id ));
+		self.sourceIds = [];
+		delete self.source;
 	}
 	
 	ns.RecentItem.prototype.getTmplConf = function() {
@@ -908,7 +928,9 @@ var hello = window.hello || {};
 		});
 		self.handleOnline( self.source.getOnline());
 		
-		self.source.on( 'online', online );
+		const onlineId = self.source.on( 'online', online );
+		self.sourceIds.push( onlineId );
+		
 		function online( e ) { self.handleOnline( e ); }
 	}
 	
@@ -1082,6 +1104,7 @@ var hello = window.hello || {};
 		
 		delete self.icon;
 		delete self.currentIcon;
+		delete self.iconMap;
 		delete self.live;
 		delete self.name;
 		
@@ -1136,28 +1159,31 @@ var hello = window.hello || {};
 			display     : '-',
 		};
 		self.status = new library.component.StatusDisplay( conf );
-		self.source.on( 'participants', parties );
-		self.source.on( 'user-live', userLive );
+		const partyId = self.source.on( 'participants', parties );
+		const uLiveId = self.source.on( 'user-live', userLive );
+		self.sourceIds.push( partyId );
+		self.sourceIds.push( uLiveId );
 		
-		function parties( num ) {
-			if ( !num )
-				setNone();
-			else
-				setNum( num );
-			
-			function setNone() {
-				self.status.set( 'empty' );
-				self.status.setDisplay( '-' );
-			}
-			
-			function setNum( num ) {
-				self.status.set( 'users' );
-				self.status.setDisplay( num );
-			}
+		function parties( num ) { self.handleParties( num ); }
+		function userLive( isLive ) { self.handleUserLive( isLive ); }
+	}
+	
+	ns.RecentRoom.prototype.handleParties = function( num ) {
+		const self = this;
+		console.log( 'handleParties', self );
+		if ( !num )
+			setNone();
+		else
+			setNum( num );
+		
+		function setNone() {
+			self.status.set( 'empty' );
+			self.status.setDisplay( '-' );
 		}
 		
-		function userLive( isLive ) {
-			self.handleUserLive( isLive );
+		function setNum( num ) {
+			self.status.set( 'users' );
+			self.status.setDisplay( num );
 		}
 	}
 	
@@ -1174,7 +1200,8 @@ var hello = window.hello || {};
 		};
 		self.live = new library.component.StatusIndicator( conf );
 		self.live.hide();
-		self.source.on( 'live', live );
+		const liveId = self.source.on( 'live', live );
+		self.sourceIds.push( liveId );
 		
 		function live( isLive ) {
 			if ( isLive ) {

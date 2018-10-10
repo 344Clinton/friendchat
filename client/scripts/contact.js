@@ -560,9 +560,11 @@ library.contact = library.contact || {};
 		if ( self.live )
 			return; // we already are in a live _in this room_
 		
+		console.log( 'joinLive', self.identity );
 		conf = conf || {};
 		conf.roomId = self.clientId;
 		conf.roomName = self.identity.name;
+		conf.isPrivate = self.isPrivate || false;
 		conf.guestAvatar = self.guestAvatar;
 		if ( self.settings.isStream )
 			conf.isStream = true;
@@ -602,7 +604,6 @@ library.contact = library.contact || {};
 			self.liveToServer( leave );
 		}
 		
-		// event sink
 		function liveToServer( type, data ) {
 			const event = {
 				type : type,
@@ -1632,6 +1633,7 @@ library.contact = library.contact || {};
 		
 		ns.Contact.call( self, conf );
 		
+		self.isPrivate = true;
 		self.settings = null;
 		self.identities = {};
 		self.onlineList = [];
@@ -1652,6 +1654,14 @@ library.contact = library.contact || {};
 			return;
 		
 		self.sendInit();
+	}
+	
+	ns.PresenceContact.prototype.getInviteToken = function( type, callback ) {
+		const self = this;
+		if ( callback )
+			callback( null );
+		
+		return false;
 	}
 	
 	// Private
