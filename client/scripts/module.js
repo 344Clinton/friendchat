@@ -1164,7 +1164,39 @@ library.module = library.module || {};
 			data : conf,
 		};
 		self.toView( addRoom );
+		
+		room.on( 'contact', contactEvent );
+		
 		return room;
+		
+		function contactEvent( e ) { self.handleGroupContactAction( e ); }
+	}
+	
+	ns.Presence.prototype.handleGroupContactAction = function( event ) {
+		const self = this;
+		console.log( 'handleGroupContactAction', event );
+		if ( 'open' === event.type )
+			self.openContactChat( event.data );
+		
+	}
+	
+	ns.Presence.prototype.openContactChat = function( contactId ) {
+		const self = this;
+		console.log( 'openContactChat', {
+			cId   : contactId,
+			conts : self.contacts,
+		});
+		const contact = self.contacts[ contactId ];
+		if ( contact ) {
+			contact.openChat();
+			return;
+		}
+		
+		let start = {
+			type : 'start',
+			data : contactId,
+		};
+		self.handleContactAction( start );
 	}
 	
 	ns.Presence.prototype.joinLiveSession = function( roomId, sessConf ) {

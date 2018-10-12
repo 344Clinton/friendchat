@@ -688,11 +688,13 @@ library.view = library.view || {};
 (function( ns, undefined ) {
 	ns.GroupUser = function(
 		id,
+		conn,
 		conf,
 		tmplManager
 	) {
 		const self = this;
 		self.id = id;
+		self.conn = conn;
 		self.name = conf.name;
 		self.avatar = conf.avatar;
 		self.admin = conf.admin || false;
@@ -753,6 +755,7 @@ library.view = library.view || {};
 	ns.GroupUser.prototype.close = function() {
 		const self = this;
 		delete self.id;
+		delete self.conn;
 		delete self.template;
 		delete self.group;
 		delete self.el;
@@ -773,7 +776,8 @@ library.view = library.view || {};
 	ns.GroupUser.prototype.init = function() {
 		const self = this;
 		self.el = buildElement();
-		self.stateEl = self.el.querySelector( '.state > i' );
+		bindElement();
+		
 		if ( self.state )
 			self.setState( self.state );
 		
@@ -787,7 +791,28 @@ library.view = library.view || {};
 			const el = self.template.getElement( 'user-list-item-tmpl', conf );
 			return el;
 		}
+		
+		function bindElement() {
+			console.log( 'bind clicky', self );
+			self.stateEl = self.el.querySelector( '.state > i' );
+			if ( self.guest )
+				return;
+			
+			self.el.addEventListener( 'click', userClick, false );
+			
+			function userClick( e ) { self.handleClick(); }
+		}
 	}
+	
+	ns.GroupUser.prototype.handleClick = function() {
+		const self = this;
+		console.log( 'GroupUser.handleClick', self );
+		self.conn.send({
+			type : 'contact-open',
+			data : self.id,
+		});
+	}
+	
 })( library.component );
 
 // UserCtrl
@@ -909,7 +934,6 @@ library.view = library.view || {};
 	ns.UserCtrl.prototype.close = function() {
 		const self = this;
 		self.releaseConn();
-		
 		self.closeUsers();
 		self.closeGroups();
 		if ( self.el )
@@ -1059,6 +1083,8 @@ library.view = library.view || {};
 		self.conn.release( 'join' );
 		self.conn.release( 'leave' );
 		self.conn.release( 'identity' );
+		self.conn.release( 'auth' );
+		self.conn.release( 'workgroup' );
 	}
 	
 	ns.UserCtrl.prototype.closeUsers = function() {
@@ -1115,6 +1141,7 @@ library.view = library.view || {};
 		
 		const userItem = new library.component.GroupUser(
 			uid,
+			self.conn,
 			user,
 			self.template
 		);

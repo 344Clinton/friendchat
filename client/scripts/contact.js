@@ -31,6 +31,7 @@ library.contact = library.contact || {};
 			return new ns.Contact( conf );
 		
 		const self = this;
+		library.component.EventEmitter.call( self );
 		self.moduleId = conf.moduleId;
 		self.parentPath = conf.parentPath || '';
 		self.clientId = self.data.clientId;
@@ -45,6 +46,8 @@ library.contact = library.contact || {};
 		
 		self.contactInit( conf.parentConn, conf.parentView );
 	}
+	
+	ns.Contact.prototype = Object.create( library.component.EventEmitter.prototype );
 	
 	// Public
 	
@@ -502,6 +505,7 @@ library.contact = library.contact || {};
 	
 	ns.Contact.prototype.contactClose = function() {
 		var self = this;
+		self.release();
 		if ( self.conn )
 			self.conn.close();
 		
@@ -510,6 +514,10 @@ library.contact = library.contact || {};
 		
 		if ( self.chatView )
 			self.chatView.close();
+		
+		delete self.conn;
+		delete self.view;
+		delete self.chatView;
 	}
 	ns.Contact.prototype.close = ns.Contact.prototype.contactClose;
 	
@@ -644,9 +652,10 @@ library.contact = library.contact || {};
 		if ( self.settingsView )
 			self.settingsView.close();
 		
+		delete self.live;
+		delete self.settingsView;
 		delete self.settings;
 	}
-	
 	
 	ns.PresenceRoom.prototype.setActive = function( isActive ) {
 		const self = this;
@@ -837,6 +846,7 @@ library.contact = library.contact || {};
 		
 		self.chatView.on( 'chat', chat );
 		self.chatView.on( 'live-upgrade', goLive );
+		self.chatView.on( 'contact-open', openContact );
 		
 		function eventSink( e ) { console.log( 'unhandled chat view event', e ); }
 		function onClose( e ) {
@@ -850,6 +860,19 @@ library.contact = library.contact || {};
 			else
 				self.startAudio();
 		}
+		function openContact( e ) { self.handleContactOpen( e ); }
+	}
+	
+	ns.PresenceRoom.prototype.handleContactOpen = function( contactId ) {
+		const self = this;
+		if ( contactId === self.userId )
+			return;
+		
+		console.log( 'handleContactOpen', contactId );
+		self.emit( 'contact', {
+			type : 'open',
+			data : contactId,
+		});
 	}
 	
 	ns.PresenceRoom.prototype.closeChat = function() {
@@ -857,8 +880,9 @@ library.contact = library.contact || {};
 		if ( !self.chatView )
 			return;
 		
-		self.chatView.close();
-		self.chatView = null;
+		let cView = self.chatView;
+		delete self.chatView;
+		cView.close();
 		self.updateActive();
 	}
 	
