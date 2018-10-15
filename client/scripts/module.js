@@ -504,6 +504,7 @@ library.module = library.module || {};
 		
 		self.type = 'presence';
 		self.roomRequests = {};
+		self.openChatWaiting = [];
 		self.init();
 	}
 	
@@ -956,6 +957,18 @@ library.module = library.module || {};
 			data : contact,
 		};
 		self.toView( cAdd );
+		
+		if ( isOpenChatWaiting( cId ))
+			room.openChat();
+		
+		function isOpenChatWaiting( cId ) {
+			console.log( 'isOpenChatWaiting', [
+				cId,
+				self.openChatWaiting,
+			]);
+			
+			return self.openChatWaiting.some( wId => wId === cId );
+		}
 	}
 	
 	ns.Presence.prototype.handleContactRemove = function( clientId ) {
@@ -1192,6 +1205,7 @@ library.module = library.module || {};
 			return;
 		}
 		
+		self.openChatWaiting.push( contactId );
 		let start = {
 			type : 'start',
 			data : contactId,
