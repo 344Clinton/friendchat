@@ -826,6 +826,7 @@ library.contact = library.contact || {};
 		
 		self.messageWaiting( false );
 		const initData = {
+			isPrivate   : self.isPrivate,
 			persistent  : self.persistent,
 			roomName    : self.identity.name,
 			guestAvatar : self.guestAvatar,
@@ -1813,6 +1814,7 @@ library.contact = library.contact || {};
 		
 		self.messageWaiting( false );
 		const initData = {
+			isPrivate   : self.isPrivate,
 			persistent  : self.persistent,
 			roomName    : self.identity.name,
 			guestAvatar : self.guestAvatar,

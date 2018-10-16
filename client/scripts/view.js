@@ -99,9 +99,9 @@ library.view = library.view || {};
 		};
 		
 		const initData = {
-			state     : self.state,
-			fragments : hello.commonFragments,
-			emojii    : hello.config.emojii,
+			state           : self.state,
+			commonFragments : hello.commonFragments,
+			emojii          : hello.config.emojii,
 		};
 		
 		self.view = new api.View(
