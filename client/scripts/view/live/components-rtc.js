@@ -96,10 +96,7 @@ library.rtc = library.rtc || {};
 		self.init();
 	}
 	
-	ns.MediaDevices.prototype.init = function() {
-		var self = this;
-		//console.log( 'media sources init' );
-	}
+	// Public
 	
 	/*
 	[ device, ]
@@ -145,6 +142,8 @@ library.rtc = library.rtc || {};
 		}
 	}
 	
+	// Private
+	
 	// parser optional
 	// without parser, default output
 	// [ device, ]
@@ -156,6 +155,7 @@ library.rtc = library.rtc || {};
 				.catch( enumError );
 				
 			function foundDevices( arr ) {
+				console.log( 'MediaDevices.enumerate', arr );
 				let res = null;
 				if ( parser )
 					res = parser( arr );
@@ -171,6 +171,13 @@ library.rtc = library.rtc || {};
 			}
 		});
 	}
+	
+	
+	ns.MediaDevices.prototype.init = function() {
+		var self = this;
+		//console.log( 'media sources init' );
+	}
+	
 })( library.rtc );
 
 

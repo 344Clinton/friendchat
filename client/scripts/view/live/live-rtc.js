@@ -1031,6 +1031,7 @@ Atleast we should be pretty safe against any unwanted pregnancies.
 		const self = this;
 		library.component.EventEmitter.call( self );
 		
+		console.log( 'Selfie', conf );
 		self.id = 'selfie';
 		self.conn = conf.conn;
 		self.view = conf.view;
@@ -1371,6 +1372,7 @@ Atleast we should be pretty safe against any unwanted pregnancies.
 		if ( !selected )
 			return;
 		
+		console.log( 'Selfie.setAudioSink', selected );
 		self.sources.getByType()
 			.then( devBack )
 			.catch( fail );
@@ -1381,6 +1383,7 @@ Atleast we should be pretty safe against any unwanted pregnancies.
 			if ( out )
 				self.currentAudioOut = label;
 			
+			console.log( 'setAudioSink - set', self.currentAudioOut );
 			self.emit( 'audio-sink', out.deviceId );
 		}
 		

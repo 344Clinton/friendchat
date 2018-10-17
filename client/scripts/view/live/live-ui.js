@@ -1281,6 +1281,7 @@ library.component = library.component || {};
 		if ( !( this instanceof ns.Peer ))
 			return new ns.Peer( conf );
 		
+		console.log( 'ui.Peer', conf );
 		var self = this;
 		self.id = conf.peer.id;
 		self.peer = conf.peer;
@@ -1340,6 +1341,7 @@ library.component = library.component || {};
 	
 	ns.Peer.prototype.setAudioSink = function( deviceId ) {
 		const self = this;
+		console.log( 'ui.Peer.setAudioSink', deviceId );
 		self.audioSinkId = deviceId || '';
 		self.updateAudioSink();
 	}
@@ -2318,6 +2320,12 @@ library.component = library.component || {};
 	ns.Peer.prototype.updateAudioSink = function() {
 		const self = this;
 		const deviceId = self.audioSinkId || '';
+		console.log( '<-- updateAudioSink ---', {
+			asid          : self.audioSinkId,
+			stream        : !!self.stream,
+			streamSetId   : !!self.stream.setSinkId,
+			currentSinkId : self.stream.sinkId,
+		});
 		
 		if ( !self.stream ) {
 			self.audioSinkId = deviceId;
@@ -2341,6 +2349,7 @@ library.component = library.component || {};
 			
 		function ok() {
 			self.audioSinkId = deviceId;
+			console.log( 'updateAudioSink -- ok -->', self.aduioSinkId );
 		}
 		
 		function fail( err ) {
