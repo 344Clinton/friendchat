@@ -2247,7 +2247,7 @@ library.component = library.component || {};
 		
 		self.stream = hello.template.getElement( 'stream-video-tmpl', conf );
 		self.stream.onloadedmetadata = play;
-		self.updateAudioSink();
+		//self.updateAudioSink();
 		
 		container.insertBefore( self.stream, RTCInfo );
 		self.toggleSpinner( false );
@@ -2347,10 +2347,12 @@ library.component = library.component || {};
 			return;
 		}
 		
+		/*
 		if ( self.stream.sinkId === deviceId ) {
 			console.log( 'setAudioSink - this deviceId is already set', deviceId );
 			return;
 		}
+		*/
 		
 		self.stream.setSinkId( deviceId )
 			.then( ok )
