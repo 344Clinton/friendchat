@@ -1997,7 +1997,7 @@ library.component = library.component || {};
 		
 		self.stream.srcObject = media;
 		//self.bindStream();
-		self.updateAudioSink();
+		//self.updateAudioSink();
 		self.stream.load();
 		
 		function clear( media ) {
@@ -2254,6 +2254,8 @@ library.component = library.component || {};
 		self.bindStreamResize();
 		
 		function play( e ) {
+			console.log( 'setStream.play', e );
+			self.updateAudioSink();
 			self.stream.play();
 		}
 	}
