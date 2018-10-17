@@ -2323,8 +2323,8 @@ library.component = library.component || {};
 		console.log( '<-- updateAudioSink ---', {
 			asid          : self.audioSinkId,
 			stream        : !!self.stream,
-			streamSetId   : !!self.stream.setSinkId,
-			currentSinkId : self.stream.sinkId,
+			streamSetId   : !!self.stream ? !!self.stream.setSinkId : null,
+			currentSinkId : !!self.stream ? self.stream.sinkId : null,
 		});
 		
 		if ( !self.stream ) {
@@ -2349,7 +2349,7 @@ library.component = library.component || {};
 			
 		function ok() {
 			self.audioSinkId = deviceId;
-			console.log( 'updateAudioSink -- ok -->', self.aduioSinkId );
+			console.log( 'updateAudioSink -- ok -->', self.audioSinkId );
 		}
 		
 		function fail( err ) {
