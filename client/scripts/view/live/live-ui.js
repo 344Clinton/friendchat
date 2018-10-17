@@ -1979,13 +1979,12 @@ library.component = library.component || {};
 	
 	ns.Peer.prototype.handleMedia = function( media ) {
 		const self = this;
-		if ( !media ) {
+		console.log( 'ui.Peer.handleMedia', media );
+		if ( !media )
 			return;
-		}
 		
-		if ( !self.stream ) {
+		if ( !self.stream )
 			self.setStream( media.id );
-		}
 		
 		self.stream.pause();
 		let srcObj = self.stream.srcObject;
@@ -1998,6 +1997,7 @@ library.component = library.component || {};
 		
 		self.stream.srcObject = media;
 		//self.bindStream();
+		self.updateAudioSink();
 		self.stream.load();
 		
 		function clear( media ) {
@@ -2055,6 +2055,7 @@ library.component = library.component || {};
 	ns.Peer.prototype.handleTrack = function( type, track ) {
 		const self = this;
 		// set state
+		console.log( 'ui.Peer.handleTrack', track );
 		const alreadyUpdating = !!self.isUpdatingStream;
 		if ( !self.isUpdatingStream ) {
 			self.stream.pause();
@@ -2226,6 +2227,11 @@ library.component = library.component || {};
 	
 	ns.Peer.prototype.setStream = function( id, src ) {
 		const self = this;
+		console.log( 'Peer.setStream', {
+			id  : id,
+			src : src,
+		});
+		
 		if ( self.stream )
 			self.removeStream();
 		
@@ -2321,6 +2327,7 @@ library.component = library.component || {};
 		const self = this;
 		const deviceId = self.audioSinkId || '';
 		console.log( '<-- updateAudioSink ---', {
+			pid           : self.id
 			asid          : self.audioSinkId,
 			stream        : !!self.stream,
 			streamSetId   : !!self.stream ? !!self.stream.setSinkId : null,
