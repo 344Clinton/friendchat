@@ -1380,8 +1380,15 @@ Atleast we should be pretty safe against any unwanted pregnancies.
 		function devBack( devices ) {
 			let label = selected.audiooutput;
 			let out = devices.audiooutput[ label ];
-			if ( out )
-				self.currentAudioOut = label;
+			console.log( 'Selfie.setAduioSink - devBack', {
+				devices : devices,
+				label   : label,
+				out     : out,
+			});
+			if ( !out )
+				return;
+			
+			self.currentAudioOut = label;
 			
 			console.log( 'setAudioSink - set', self.currentAudioOut );
 			self.emit( 'audio-sink', out.deviceId );
