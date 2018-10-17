@@ -2327,7 +2327,7 @@ library.component = library.component || {};
 		const self = this;
 		const deviceId = self.audioSinkId || '';
 		console.log( '<-- updateAudioSink ---', {
-			pid           : self.id
+			pid           : self.id,
 			asid          : self.audioSinkId,
 			stream        : !!self.stream,
 			streamSetId   : !!self.stream ? !!self.stream.setSinkId : null,
