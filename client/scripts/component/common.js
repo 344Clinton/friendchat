@@ -275,6 +275,147 @@ inherits from EventEmitter
 	}
 })( library.component );
 
+
+// RequestNode
+// ALL HANDLERS ARE EXPECTED TO RETURN PROMISES
+// .request( t, d ) returns a Promise
+(function( ns, undefined ) {
+	ns.RequestNode = function(
+		conn,
+		eventSink,
+		onSend
+	) {
+		const self = this;
+		ns.EventNode.call( self,
+			'request',
+			conn,
+			eventSink,
+			onSend
+		);
+		
+		self._requests = {};
+		self.initRequestNode();
+	}
+	
+	ns.RequestNode.prototype = Object.create( ns.EventNode.prototype );
+	
+	// Public
+	
+	ns.RequestNode.prototype.request = function( type, data ) {
+		const self = this;
+		return new Promise(( resolve, reject ) => {
+			let reqId = friendUP.tool.uid( 'req' );
+			self._requests[ reqId ] = handleResponse;
+			let reqWrap = {
+				requestId : reqId,
+				request   : {
+					type    : type,
+					data    : data,
+				},
+			};
+			self.send( reqWrap );
+			
+			function handleResponse( error, response ) {
+				console.log( 'handleResponse', [
+					error,
+					response,
+				]);
+				delete self._requests[ reqId ];
+				if ( error )
+					reject( error );
+				else
+					resolve( response );
+			}
+		});
+	}
+	
+	// Private
+	
+	ns.RequestNode.prototype.initRequestNode = function() {
+		const self = this;
+		console.log( 'initRequestNode =0w0=' );
+	}
+	
+	ns.RequestNode.prototype.handle = function( event ) {
+		const self = this;
+		console.log( 'RequestNode.handle', event );
+		if ( 'response' === event.type ) {
+			self.handleResponse( event.data );
+			return;
+		}
+		
+		const reqId = event.requestId;
+		const request = event.request;
+		self.callListener( req )
+			.then( response )
+			.catch( error );
+			
+		function response( data ) {
+			const res = {
+				type : 'response',
+				data : {
+					requestId : reqId,
+					response  : data,
+				}
+			};
+			self.send( res );
+		}
+		
+		function error( err ) {
+			const errRes = {
+				type : 'response',
+				data : {
+					requestId : reqId,
+					error     : data,
+				},
+			};
+			self.send( errRes );
+		}
+	}
+	
+	ns.RequestNode.prototype.handleResponse = function( event ) {
+		const self = this;
+		console.log( 'handleResponse', event );
+		const reqId = event.requestId;
+		const err = event.error || null;
+		const res = err ? null : ( event.response || null );
+		const handler = self._requests[ reqId ];
+		if ( !handler ) {
+			console.log( 'RequestNode.handleResponse - no handler for', {
+				event    : event,
+				handlers : self._requests,
+			});
+			return;
+		}
+		
+		handler( err, res );
+	}
+	
+	ns.RequestNode.prototype.callListener = function( req ) {
+		const self = this;
+		console.log( 'RequestNode.callListener', req );
+		const type = req.type;
+		const data = req.data;
+		const listeners = self.eventToListener[ type ];
+		if ( !listeners || !listeners.length )
+			return error( 'ERR_NO_LISTENER' );
+		
+		if ( listeners.length !== 1 )
+			return error( 'ERR_MULTIPLE_LISTENERS' );
+		
+		const lId = listeners[ 0 ];
+		const listener = self.eventListeners[ lId ];
+		return listener( data );
+		
+		function error( errMsg ) {
+			return new Promise(( resolve, reject ) => {
+				reject( errMsg );
+			});
+		}
+	}
+	
+})( library.component );
+
 //SubView
 (function( ns, undefined ) {
 	ns.SubView = function( conf ) {

@@ -96,10 +96,7 @@ library.rtc = library.rtc || {};
 		self.init();
 	}
 	
-	ns.MediaDevices.prototype.init = function() {
-		var self = this;
-		//console.log( 'media sources init' );
-	}
+	// Public
 	
 	/*
 	[ device, ]
@@ -145,6 +142,8 @@ library.rtc = library.rtc || {};
 		}
 	}
 	
+	// Private
+	
 	// parser optional
 	// without parser, default output
 	// [ device, ]
@@ -171,6 +170,13 @@ library.rtc = library.rtc || {};
 			}
 		});
 	}
+	
+	
+	ns.MediaDevices.prototype.init = function() {
+		var self = this;
+		//console.log( 'media sources init' );
+	}
+	
 })( library.rtc );
 
 
@@ -762,7 +768,7 @@ library.rtc = library.rtc || {};
 		self.channels = {};
 		
 		// rtc specific logging ( automatic host / client prefix )
-		self.spam = true;
+		self.spam = false;
 		
 		self.init();
 	}
@@ -956,9 +962,6 @@ library.rtc = library.rtc || {};
 			});
 		}
 		
-		//let checkICEProp = Object.getOwnPropertyDescriptor( self.rtc, 'ICE' );
-		//console.log( 'checkICEProp', checkICEProp );
-		
 		let peerConf = {
 			iceServers         : self.rtc.ICE,
 		};
@@ -970,10 +973,6 @@ library.rtc = library.rtc || {};
 			peerConf.bundlePolicy = self.bundlePolicy;
 		
 		window.rtcConf = peerConf;
-		//iceServers : 'auto', // throws
-		
-		//let checkProp = Object.getOwnPropertyDescriptor( peerConf, 'iceServers' );
-		//console.log( 'session.checkProp', checkProp );
 		
 		self.log( 'PeerConnection conf', peerConf );
 		self.conn = new window.RTCPeerConnection( peerConf );
@@ -1597,7 +1596,7 @@ library.rtc = library.rtc || {};
 	
 	ns.Session.prototype.emitRouting = function() {
 		const self = this;
-		const routing = self.getRouting( self.conn.localDescription.sdp );
+		const routing = self.getRouting();
 		self.setState( 'routing', routing );
 	}
 	
@@ -2056,11 +2055,6 @@ library.rtc = library.rtc || {};
 			deviceSource
 	) {
 		const self = this;
-		console.log( 'Media', {
-			permsss : permissions,
-			preffff : preferedDevices,
-			devices : deviceSource,
-		});
 		library.component.EventEmitter.call( self );
 		
 		self.permissions = permissions || {
@@ -2100,10 +2094,6 @@ library.rtc = library.rtc || {};
 	// permissions and preferedDevices are optional
 	ns.Media.prototype.create = function( permissions, preferedDevices ) {
 		const self = this;
-		console.log( 'Media.create', {
-			permissions     : permissions,
-			preferedDevices : preferedDevices,
-		});
 		if ( null != permissions )
 			self.permissions = permissions;
 		
@@ -2183,7 +2173,6 @@ library.rtc = library.rtc || {};
 				.catch( screenFail );
 				
 			function screenBack( media ) {
-				console.log( 'shareScreen screenBack', media );
 				let tracks = media.getVideoTracks();
 				shareMedia.addTrack( tracks[ 0 ]);
 				addAudio();
@@ -2195,7 +2184,6 @@ library.rtc = library.rtc || {};
 		}
 		
 		function addAudio() {
-			console.log( 'addAudio' );
 			self.devices.getByType()
 				.then( devsBack )
 				.catch( devsFail );
@@ -2206,7 +2194,6 @@ library.rtc = library.rtc || {};
 			}
 			
 			function devsBack( available ) {
-				console.log( 'shareScreen audio devsBack', available );
 				let conf = {
 					audio : self.mediaConf.audio || {},
 					video : false,
@@ -2217,7 +2204,6 @@ library.rtc = library.rtc || {};
 					.catch( audioFail );
 				
 				function audioBack( media ) {
-					console.log( 'shareScreen audioBack', media );
 					let tracks = media.getAudioTracks();
 					shareMedia.addTrack( tracks[ 0 ]);
 					self.setMedia( shareMedia );
@@ -2233,7 +2219,6 @@ library.rtc = library.rtc || {};
 	
 	ns.Media.prototype.getCurrentDevices = function() {
 		const self = this;
-		console.log( 'Media.getCurrentDevices', self.currentDevices );
 		return self.currentDevices;
 	}
 	
@@ -2258,7 +2243,6 @@ library.rtc = library.rtc || {};
 	
 	ns.Media.prototype.setQuality = function( quality ) {
 		const self = this;
-		console.log( 'Media.setQuality', quality );
 		// defaults
 		quality = quality || {};
 		quality.level = quality.level || 'normal';
@@ -2280,7 +2264,6 @@ library.rtc = library.rtc || {};
 	
 	ns.Media.prototype.clear = function() {
 		const self = this;
-		console.log( 'Media.clear', self.media );
 		self.cleanup();
 		self.emit( 'media', null );
 		
@@ -2378,7 +2361,6 @@ library.rtc = library.rtc || {};
 	
 	ns.Media.prototype.getMedia = function( conf, noFallback ) {
 		const self = this;
-		console.log( 'Media.getMedia', conf );
 		self.cleanup();
 		return new Promise(( resolve, reject ) => {
 			window.navigator.mediaDevices.getUserMedia( conf )

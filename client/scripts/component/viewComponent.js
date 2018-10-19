@@ -2395,13 +2395,13 @@ library.component = library.component || {};
 			hasMenu = false;
 		
 		const conf = {
-			uuid       : item.uuid,
-			name       : item.name || '',
-			email      : item.email || '---',
-			alias      : item.alias || '---',
-			avatar     : item.avatar || '',
-			subHidden  : hasAddRelation ? '' : 'hidden',
-			menuHidden : hasMenu ? '' : 'hidden',
+			uuid        : item.uuid,
+			name        : item.name || '',
+			email       : item.email || '',
+			avatar      : item.avatar || '',
+			emailHidden : item.email ? '' : 'hidden',
+			subHidden   : hasAddRelation ? '' : 'hidden',
+			menuHidden  : hasMenu ? '' : 'hidden',
 		};
 		
 		const el = self.template.getElement( 'search-result-contact-tmpl', conf );

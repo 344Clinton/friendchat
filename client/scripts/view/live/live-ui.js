@@ -1257,10 +1257,6 @@ library.component = library.component || {};
 	
 	ns.UI.prototype.updateQualityLevel = function( level ) {
 		var self = this;
-		console.log( 'UI.updateQualityLevel', {
-			level : level,
-			peers : self.peerGridOrder,
-		});
 		self.currentQuality = level;
 		self.peerIds.forEach( setLevel );
 		function setLevel( peerId ) {
@@ -1981,13 +1977,11 @@ library.component = library.component || {};
 	
 	ns.Peer.prototype.handleMedia = function( media ) {
 		const self = this;
-		if ( !media ) {
+		if ( !media )
 			return;
-		}
 		
-		if ( !self.stream ) {
+		if ( !self.stream )
 			self.setStream( media.id );
-		}
 		
 		self.stream.pause();
 		let srcObj = self.stream.srcObject;
@@ -2000,6 +1994,7 @@ library.component = library.component || {};
 		
 		self.stream.srcObject = media;
 		//self.bindStream();
+		//self.updateAudioSink();
 		self.stream.load();
 		
 		function clear( media ) {
@@ -2109,7 +2104,6 @@ library.component = library.component || {};
 	
 	ns.Peer.prototype.handleVideo = function( available ) {
 		var self = this;
-		console.log( 'UI.handleVideo', available );
 		if ( !self.stream )
 			return;
 		
@@ -2121,7 +2115,6 @@ library.component = library.component || {};
 	
 	ns.Peer.prototype.handleAudio = function( available ) {
 		var self = this;
-		console.log( 'UI.handleAudio', available );
 		if ( !self.stream )
 			return;
 		
@@ -2207,13 +2200,11 @@ library.component = library.component || {};
 	
 	ns.Peer.prototype.showAvatar = function() {
 		const self = this;
-		console.log( 'showAvatar' );
 		self.el.classList.toggle( 'no-avatar', false );
 	}
 	
 	ns.Peer.prototype.hideAvatar = function() {
 		const self = this;
-		console.log( 'hideAvatar' );
 		self.el.classList.toggle( 'no-avatar', true );
 	}
 	
@@ -2247,13 +2238,14 @@ library.component = library.component || {};
 		
 		self.stream = hello.template.getElement( 'stream-video-tmpl', conf );
 		self.stream.onloadedmetadata = play;
-		self.updateAudioSink();
+		//self.updateAudioSink();
 		
 		container.insertBefore( self.stream, RTCInfo );
 		self.toggleSpinner( false );
 		self.bindStreamResize();
 		
 		function play( e ) {
+			self.updateAudioSink();
 			self.stream.play();
 		}
 	}
@@ -2326,7 +2318,6 @@ library.component = library.component || {};
 	ns.Peer.prototype.updateAudioSink = function() {
 		const self = this;
 		const deviceId = self.audioSinkId || '';
-		
 		if ( !self.stream ) {
 			self.audioSinkId = deviceId;
 			console.log( 'setAudioSink - no stream' );
@@ -2338,10 +2329,12 @@ library.component = library.component || {};
 			return;
 		}
 		
+		/*
 		if ( self.stream.sinkId === deviceId ) {
 			console.log( 'setAudioSink - this deviceId is already set', deviceId );
 			return;
 		}
+		*/
 		
 		self.stream.setSinkId( deviceId )
 			.then( ok )
@@ -2495,7 +2488,6 @@ library.component = library.component || {};
 	ns.Peer.prototype.applyQualityLevel = function( level ) {
 		const self = this;
 		self.currentQuality = level || self.currentQuality;
-		console.log( 'applyQualityLevel', self.currentQuality );
 		self.useCoverMode = 'low' === self.currentQuality ? false : true;
 		const isLow = ( 'low' === self.currentQuality );
 		self.el.classList.toggle( 'quality-low', isLow );

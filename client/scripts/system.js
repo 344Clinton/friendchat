@@ -2330,26 +2330,26 @@ Searchable collection(s) of users, rooms and other odds and ends
 	) {
 		const self = this;
 		const searchId = searchEvent.id;
-		const filter = searchEvent.str;
+		const needle = searchEvent.str;
 		const constraints = searchEvent.constraints;
 		
 		self.searches[ searchId ] = {
 			id       : searchId,
-			pools    : [],
+			results  : [],
 			listenId : listenId,
 		};
 		const search = self.searches[ searchId ];
 		self.sourceIds.forEach( sId => {
 			let source = self.sources[ sId ];
-			let res = source.getSearchPools();
-			res.pools.forEach( future => {
+			let res = source.search( needle );
+			res.results.forEach( future => {
 				let poolMeta = {
 					sourceId : sId,
 					source   : res.source,
 					done     : false,
 					future   : future,
 				};
-				search.pools.push( poolMeta );
+				search.results.push( poolMeta );
 				future
 					.then( poolBack )
 					.catch( poolErr );
@@ -2360,8 +2360,8 @@ Searchable collection(s) of users, rooms and other odds and ends
 					poolMeta.actions = res.actions || [];
 					poolMeta.done = true;
 					delete poolMeta.future;
-					let result = self.filter.filter( filter, pool );
-					self.sendResult( searchId, poolMeta, result );
+					//let result = self.filter.filter( filter, pool );
+					self.sendResult( searchId, poolMeta, pool );
 				}
 				
 				function poolErr( err ) {
@@ -2522,8 +2522,8 @@ Searchable collection(s) of users, rooms and other odds and ends
 		if ( !conn )
 			return;
 		
-		const total = search.pools.length;
-		let resultNum = search.pools
+		const total = search.results.length;
+		let resultNum = search.results
 			.filter( pool => pool.done )
 			.length;
 		
