@@ -95,7 +95,13 @@ library.module = library.module || {};
 			handler : receiveMsg
 		});
 		
+		self.requests = new library.component.RequestNode(
+			self.conn,
+			reqSink
+		);
+		
 		function receiveMsg( msg ) { self.receiveMsg( msg ); }
+		function reqSink() { console.log( 'reqSink', arguments ); }
 		
 		self.messageMap = {
 			'initstate'  : initState,
@@ -1093,7 +1099,7 @@ library.module = library.module || {};
 		self.type = 'treeroot';
 		self.subscribeView = null;
 		
-		self.requests = {};
+		self.requestss = {};
 		
 		self.init();
 	}
@@ -1233,7 +1239,6 @@ library.module = library.module || {};
 		self.messageMap[ 'contact' ] = contactEvent;
 		self.messageMap[ 'subscription' ] = subscription;
 		self.messageMap[ 'register' ] = registerResponse;
-		self.messageMap[ 'userlist' ] = userList;
 		self.messageMap[ 'keyexchange' ] = keyExchangeHandler;
 		self.messageMap[ 'pass-ask-auth' ] = passAskAuth;
 		
@@ -1241,7 +1246,6 @@ library.module = library.module || {};
 		function contactEvent( e ) { self.contactEvent( e ); }
 		function subscription( e ) { self.subscription( e ); }
 		function registerResponse( e ) { self.registerResponse( e ); }
-		function userList( e ) { self.handleUserList( e ); }
 		function keyExchangeHandler( e ) { self.keyExchangeHandler( e ); }
 		function passAskAuth( e ) { self.passAskAuth( e ); }
 		
@@ -1962,12 +1966,12 @@ library.module = library.module || {};
 	
 	ns.Treeroot.prototype.handleUserList = function( event ) {
 		const self = this;
-		let callback = self.requests[ event.reqId ];
+		let callback = self.requestss[ event.reqId ];
 		if ( !callback )
 			return;
 		
 		callback( event.list );
-		delete self.requests[ event.reqId ];
+		delete self.requestss[ event.reqId ];
 	}
 	
 	ns.Treeroot.prototype.getUserList = function() {
@@ -1978,14 +1982,17 @@ library.module = library.module || {};
 				return;
 			}
 			
-			let reqId = friendUP.tool.uid( 'ulist' );
 			let getUsers = {
 				type : 'userlist',
 				data : reqId,
 			};
-			self.send( getUsers );
-			self.requests[ reqId ] = listBack;
-			function listBack( userList ) {
+			self.requests.request( 'userlist', null )
+				.then( reqBack )
+				.catch( reqFail );
+			
+			
+			function reqBack( error, userList ) {
+				console.log( 'reqBack', [ error, userList ]);
 				self.userList = userList;
 				self.userListCacheTimeout = window.setTimeout( clearUserListCache, 1000 * 10 );
 				resolve( userList );
@@ -2011,7 +2018,7 @@ library.module = library.module || {};
 					reqId  : reqId,
 				},
 			});
-			self.requests[ reqId ] = subConfirm;
+			self.requestss[ reqId ] = subConfirm;
 			function subConfirm( success ) {
 				if ( success )
 					resolve();
@@ -2037,11 +2044,11 @@ library.module = library.module || {};
 		if ( !reqId )
 			return;
 		
-		const callback = self.requests[ reqId ];
+		const callback = self.requestss[ reqId ];
 		if ( !callback )
 			return;
 		
-		delete self.requests[ reqId ];
+		delete self.requestss[ reqId ];
 		callback( event.response );
 	}
 	

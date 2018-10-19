@@ -181,8 +181,13 @@ ns.Emitter.prototype.emitterClose = function() {
 	delete self._emitterEventSink;
 }
 
+/* EventNode
 
-// EventNode
+- write things here
+- later
+
+*/
+
 const nLog = require( './Log' )( 'EventNode' );
 ns.EventNode = function( type, conn, sink, proxyType ) {
 	const self = this;
@@ -243,6 +248,74 @@ ns.EventNode.prototype._handleEvent = function() {
 	args.unshift( event.data );
 	args.unshift( event.type );
 	self.emit.apply( self, args );
+}
+
+/* RequestNode
+
+- Write things here aswell
+- also later
+
+*/
+
+ns.RequestNode = function( conn, eventSink ) {
+	const self = this;
+	ns.EventNode.call( self,
+		'request',
+		conn,
+		eventSink,
+		null,
+	);
+	
+	self._requests = {};
+	self._requestNodeInit();
+}
+
+util.inherits( ns.RequestNode, ns.EventNode );
+
+ns.RequestNode.prototype.request = async function( type, data ) {
+	const self = this;
+	return new Promise(( resolve, reject ) => {
+		function sendRequest( type, data ) {
+			const reqId = uuid.get( 'req' );
+			self._requests[ reqId ] = handleResponse;
+			const reqWrap = {
+				requestId : reqId,
+				request   : {
+					type    : type,
+					data    : data,
+				},
+			};
+			
+			self.send( reqWrap );
+		}
+		
+		function handleResponse( error, response ) {
+			log( 'handleResponse', [
+				error,
+				response,
+			]);
+			delete self._requests[ reqId ];
+			if ( error ) {
+				reject( error );
+				return;
+			} else {
+				resolve( response );
+			}
+		}
+	});
+}
+
+// Private
+
+ns.RequestNode.prototype._requestNodeInit = function() {
+	const self = this;
+	log( 'requestNodeInit' );
+}
+
+ns.RequestNode.prototype._handleEvent = function() {
+	const self = this;
+	log( '_handleEvent', arguments );
+	args = self._getArgs( arguments );
 }
 
 module.exports = ns;

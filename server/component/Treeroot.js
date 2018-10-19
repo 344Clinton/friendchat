@@ -25,6 +25,7 @@ var querystring = require( 'querystring' );
 var xmlAway = require( 'xml2js' );
 var util = require( 'util' );
 var uuid = require( './UuidPrefix' )( 'treeroot' );
+var events = require( './Emitter' );
 
 var ns = {};
 
@@ -107,7 +108,7 @@ ns.Treeroot.prototype.init = function() {
 	self.client.on( 'settings', getSettings );
 	self.client.on( 'setting', updateSetting );
 	self.client.on( 'register', registerAccount );
-	self.client.on( 'userlist', getUserList );
+	//self.client.on( 'userlist', getUserList );
 	self.client.on( 'subscription', subscription );
 	self.client.on( 'pass-reset', resetPassphrase );
 	self.client.on( 'stop', stop );
@@ -121,11 +122,14 @@ ns.Treeroot.prototype.init = function() {
 	function getSettings( e, socketId ) { self.getSettings( socketId ); }
 	function updateSetting( e, socketId ) { self.updateSetting( e ); }
 	function registerAccount( e, socketId ) { self.register( e, socketId ); }
-	function getUserList( e, socketId ) { self.getUserList( e, socketId ); }
 	function subscription( e ) { self.subscription( e ); }
 	function resetPassphrase( e, socketId ) { self.resetPassphrase( e, socketId ); }
 	function stop( e ) { self.log( 'treeroot stop event - this isnt evenn a real handler!?', self.conf ); }
 	function kill( callback ) { self.kill( callback ); }
+	
+	self.requests = new events.RequestNode( self.client, null );
+	self.requests.on( 'userlist', getUserList );
+	function getUserList( e, socketId ) { return self.getUserList( e, socketId ); }
 	
 	//
 	self.settingsUpdateMap = {
@@ -1213,62 +1217,61 @@ ns.Treeroot.prototype.stopMessageLongpoll = function( contactId ) {
 	cState.longpoll = false;
 }
 
-ns.Treeroot.prototype.getUserList = function( reqId, socketId ) {
+ns.Treeroot.prototype.getUserList = function( event, socketId ) {
 	var self = this;
-	self.fetchContact( null, usersBack );
-	function usersBack( res ) {
-		let users = [];
-		if ( res.response != 'ok' ) {
-			self.log( 'getUserList - failed', res );
-			send( reqId, users );
-			return;
+	self.log( 'getUserList', [ event, socketId ]);
+	return new Promise(( resolve, reject ) => {
+		self.fetchContact( null, usersBack );
+		function usersBack( res ) {
+			let users = [];
+			if ( res.response != 'ok' ) {
+				self.log( 'getUserList - failed', res );
+				send( null, users );
+				return;
+			}
+			
+			users = res.items.Contacts;
+			users = users.filter( isNotContactSubOrSelf );
+			var userList = users.map( buildUserObj );
+			send( null, userList );
+			
+			function send( err, list ) {
+				if ( err )
+					reject( err );
+				else
+					resolve( list );
+			}
+			
+			function isNotContactSubOrSelf( user ) {
+				var contact = self.contacts.get( user.ID );
+				var sub = self.subscriptions.get( user.ID );
+				
+				if ( contact )
+					return false;
+				
+				if ( sub )
+					return false;
+				
+				if ( user.ID === self.account.id )
+					return false;
+				
+				return true;
+			}
+			
+			function buildUserObj( user ) {
+				let name = user.DisplayName || user.Username;
+				var userObj = {
+					id       : user.ID,
+					email    : user.Email,
+					username : user.Username,
+					name     : name,
+				};
+				
+				userObj.displayName = userObj.name || userObj.username;
+				return userObj;
+			}
 		}
-		
-		users = res.items.Contacts;
-		users = users.filter( isNotContactSubOrSelf );
-		var userList = users.map( buildUserObj );
-		send( reqId, userList );
-		
-		function send( reqId, list ) {
-			var msg = {
-				type : 'userlist',
-				data : {
-					reqId : reqId,
-					list  : list,
-				},
-			};
-			self.toClient( msg, socketId );
-		}
-		
-		function isNotContactSubOrSelf( user ) {
-			var contact = self.contacts.get( user.ID );
-			var sub = self.subscriptions.get( user.ID );
-			
-			if ( contact )
-				return false;
-			
-			if ( sub )
-				return false;
-			
-			if ( user.ID === self.account.id )
-				return false;
-			
-			return true;
-		}
-		
-		function buildUserObj( user ) {
-			let name = user.DisplayName || user.Username;
-			var userObj = {
-				id       : user.ID,
-				email    : user.Email,
-				username : user.Username,
-				name     : name,
-			};
-			
-			userObj.displayName = userObj.name || userObj.username;
-			return userObj;
-		}
-	}
+	});
 }
 
 ns.Treeroot.prototype.addContact = function( relation ) {
