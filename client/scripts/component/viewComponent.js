@@ -2183,14 +2183,14 @@ library.component = library.component || {};
 		if ( self.searchStr === str )
 			return;
 		
+		self.clearSearch();
+		self.setActive();
 		if ( isSameBaseSearch( str )) {
 			self.searchStr = str;
-			self.refreshResults();
+			self.searchTimeout = window.setTimeout( searchAnyway, 250 );
 			return;
 		}
 		
-		self.clearSearch();
-		self.setActive();
 		if ( 1 === str.length ) {
 			self.searchStr = str;
 			self.searchTimeout = window.setTimeout( searchAnyway, 2000 );
@@ -2307,12 +2307,15 @@ library.component = library.component || {};
 		
 		const src = event.data;
 		const sId = friendUP.tool.uid( 'src' );
+		const items = src.result;
+		if ( !items || !items.length )
+			return;
+		
 		const source = addSource( src, sId );
 		const poolEl = document.getElementById( source.uuid );
 		const poolContent = poolEl.querySelector( '.content' );
-		const items = src.result;
 		items.forEach( add );
-		refreshResults( source );
+		//refreshResults( source );
 		
 		function add( item ) {
 			let uuid = friendUP.tool.uid();

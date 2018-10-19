@@ -2307,7 +2307,6 @@ Searchable collection(s) of users, rooms and other odds and ends
 		self.sourceIds = [];
 		
 		self.searches = {};
-		self.filter = null;
 		self.listeners = {};
 		
 		self.init();
@@ -2317,10 +2316,6 @@ Searchable collection(s) of users, rooms and other odds and ends
 	
 	ns.Items.prototype.close = function() {
 		const self = this;
-		if ( self.filter )
-			self.filter.close();
-		
-		delete self.filter;
 	}
 	
 	// TODO : constraints - list of source ids and/or scopes
@@ -2360,7 +2355,6 @@ Searchable collection(s) of users, rooms and other odds and ends
 					poolMeta.actions = res.actions || [];
 					poolMeta.done = true;
 					delete poolMeta.future;
-					//let result = self.filter.filter( filter, pool );
 					self.sendResult( searchId, poolMeta, pool );
 				}
 				
@@ -2421,7 +2415,6 @@ Searchable collection(s) of users, rooms and other odds and ends
 	
 	ns.Items.prototype.init = function() {
 		const self = this;
-		self.filter = new library.component.Filter();
 		self.actionMap = {
 			'add-relation'    : addRelation,
 			'remove-relation' : removeRelation,
