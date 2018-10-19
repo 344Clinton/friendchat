@@ -193,8 +193,6 @@ library.view = library.view || {};
 		self.toggleUsersBtn.classList.toggle( 'hidden', !isVisible );
 	}
 	
-	// conn
-	
 	ns.Presence.prototype.bindConn = function() {
 		const self = this;
 		self.conn.on( 'initialize', initialize );
@@ -213,15 +211,15 @@ library.view = library.view || {};
 	ns.Presence.prototype.handleInitialize = function( conf ) {
 		const self = this;
 		friend.template.addFragments( conf.commonFragments );
+		const state = conf.state;
 		
 		// things
-		const state = conf.state;
 		self.isPrivate  = state.isPrivate;
 		self.persistent = state.persistent;
 		self.name       = state.roomName;
 		self.ownerId    = state.ownerId;
 		self.userId     = state.userId;
-		
+
 		self.users = new library.component.UserCtrl(
 			self.conn,
 			state.users,

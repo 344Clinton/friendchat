@@ -294,7 +294,6 @@ library.contact = library.contact || {};
 	ns.Contact.prototype.recentMessage = function( message, from, time ) {
 		const self = this;
 		const intercept = self.checkIntercept( message );
-		console.log( 'intercept', intercept );
 		const msg = {
 			type : 'message',
 			data : {
@@ -2022,11 +2021,18 @@ library.contact = library.contact || {};
 		if ( !self.lastMessage )
 			return;
 		
-		const intercept = self.checkIntercept( self.lastMessage.data.message );
+		let msg = self.lastMessage.data;
+		if ( !msg )
+			return;
+		
+		if ( msg.dec )
+			msg = self.decryptMessage( msg );
+		
+		const intercept = self.checkIntercept( msg.message );
 		if ( !intercept )
 			return;
 		
-		const notie = self.getInterceptNotification( self.lastMessage.data, intercept );
+		const notie = self.getInterceptNotification( msg, intercept );
 		self.lastMessage.data.message = notie.message;
 	}
 	
@@ -2087,7 +2093,7 @@ library.contact = library.contact || {};
 		function startChat( msg ) { self.startChat( msg ); }
 		function startVideo( e ) { self.startVideo( e ); }
 		function startAudio( e ) { self.startAudio( e ); }
-		function option( msg ) { console.log( 'contact.option', msg ); }
+		function option( msg ) { console.log( 'contact.option - NYI', msg ); }
 		function remove( msg ) { self.removeRelation( msg ); }
 	}
 	

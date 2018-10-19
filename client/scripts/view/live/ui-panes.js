@@ -908,16 +908,16 @@ library.component = library.component || {};
     // Public
     
     ns.SourceSelectPane.prototype.showDevices = function( currentDevices ) {
-        var self = this;
+        const self = this;
         self.refreshDevices( currentDevices );
     }
     
     ns.SourceSelectPane.prototype.showGetUserMediaError = function( data ) {
-        var self = this;
+        const self = this;
         self.clear();
-        var error = 'Failed to attach media: ' + data.err.name;
-        var errorElement = document.getElementById( 'source-error' );
-        var errorMsg = errorElement.querySelector( '.error-message' );
+        const error = 'Failed to attach media: ' + data.err.name;
+        const errorElement = document.getElementById( 'source-error' );
+        const errorMsg = errorElement.querySelector( '.error-message' );
         errorMsg.innerText = error;
         self.toggleExplain( false );
         self.toggleSelects( false );
@@ -1144,11 +1144,12 @@ library.component = library.component || {};
             }
             
             // add no select option to the list
-            devices[ 'none' ] = {
-                label : 'none',
-                displayLabel : View.i18n('i18n_no_selection'),
-                kind : conf.type,
-            }
+            if ( conf.type !== self.outputId )
+                devices[ 'none' ] = {
+                    label : 'none',
+                    displayLabel : View.i18n( 'i18n_no_selection' ),
+                    kind : conf.type,
+                }
             
             const select = self.buildSelect( conf.type, devices );
             const containerId = conf.type + '-select';
@@ -1291,6 +1292,9 @@ library.component = library.component || {};
         let label = selected[ 'audiooutput' ];
         let dev = self.allDevices.audiooutput[ label ];
         
+        if ( !dev )
+            return;
+        
         self.previewEl.setSinkId( dev.deviceId )
             .then( ok )
             .catch( fail );
@@ -1342,15 +1346,16 @@ library.component = library.component || {};
                 if ( currDev === item.label )
                     selected = 'selected';
             } else {
-                // ..no device defined, so check if this is the 'no select' entry
-                if ( item.label === 'none' )
+                // ..no device defined, so check if this is the 'no select' or default entry
+                if (( item.label === 'none' ) || ( 'default' === item.deviceId ))
                     selected = 'selected';
+                
             }
             
             var optionConf = {
-                value : item.label,
+                value    : item.label,
                 selected : selected,
-                label : item.displayLabel || item.label,
+                label    : item.displayLabel || item.label,
             };
             var html = hello.template.get( 'source-select-option-tmpl', optionConf );
             return html;
