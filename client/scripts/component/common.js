@@ -610,6 +610,4 @@ inherits from EventEmitter
 		});
 	}
 	
-	
-	
 })( library.component );

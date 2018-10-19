@@ -1278,9 +1278,12 @@ ns.Treeroot.prototype.getUserList = function( event, socketId ) {
 			
 			function buildUserObj( user ) {
 				let name = user.DisplayName || user.Username;
+				self.log( 'user', user );
 				var userObj = {
 					id       : user.ID,
 					name     : name,
+					email    : user.Email,
+					alias    : user.Username,
 				};
 				
 				//userObj.displayName = userObj.name || userObj.username;
@@ -1293,15 +1296,32 @@ ns.Treeroot.prototype.getUserList = function( event, socketId ) {
 ns.Treeroot.prototype.handleSearchAvailable = async function( searchStr ) {
 	const self = this;
 	self.log( 'handleSearchAvailable', searchStr );
-	let list = await self.getUserList();
-	list = list.filter( user => {
-		if ( -1 === user.name.indexOf( searchStr ))
-			return false;
-		else
+	const filterRX = new RegExp( searchStr, 'i' );
+	let pool = await self.getUserList();
+	if ( !pool || !pool.length )
+		return [];
+	
+	const list = pool.filter( item => {
+		self.log( 'filter.item', item );
+		if ( item.name.match( filterRX ))
 			return true;
+		
+		if ( item.email && item.email.match( filterRX ))
+			return true;
+		
+		if ( item.alias && item.alias.match( filterRX ))
+			return true;
+		
+		return false;
 	});
 	
-	return list;
+	return list.map( user => {
+		self.log( 'map', user );
+		return {
+			id   : user.id,
+			name : user.name,
+		};
+	});
 }
 
 ns.Treeroot.prototype.addContact = function( relation ) {

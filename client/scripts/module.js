@@ -538,6 +538,7 @@ library.module = library.module || {};
 	
 	ns.Presence.prototype.search = function( searchStr ) {
 		const self = this;
+		let filter = new library.component.Filter();
 		let results = [
 			new Promise( getRooms ),
 			new Promise( getContacts ),
@@ -551,7 +552,8 @@ library.module = library.module || {};
 		function getRooms( resolve, reject ) {
 			let items = Object.keys( self.rooms )
 				.map( build );
-			
+				
+			items = filter.filter( searchStr, items );
 			resolve({
 				type    : 'groups',
 				actions : [
@@ -577,7 +579,8 @@ library.module = library.module || {};
 		function getContacts( resolve, reject ) {
 			let items = Object.keys( self.contacts )
 				.map( build );
-				
+			
+			items = filter.filter( searchStr, items );
 			resolve({
 				type    : 'contacts',
 				actions : [
@@ -1361,6 +1364,7 @@ library.module = library.module || {};
 	
 	ns.Treeroot.prototype.search = function( searchStr ) {
 		const self = this;
+		const filter = new library.component.Filter();
 		let results = [
 			new Promise( getContacts ),
 			new Promise( getAvailable ),
@@ -1377,20 +1381,21 @@ library.module = library.module || {};
 				return;
 			}
 			
-			const items = Object.keys( self.contacts )
+			let items = Object.keys( self.contacts )
 				.map( cId => {
 					let contact = self.contacts[ cId ];
 					return build( contact, true );
 				});
 			
+			items = filter.filter( searchStr, items );
 			resolve({
 				type    : 'current',
+				pool    : items,
 				actions : [
 					'open-chat',
 					'invite-video',
 					'invite-audio',
 				],
-				pool    : items,
 			});
 		};
 		
