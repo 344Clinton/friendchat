@@ -80,9 +80,9 @@ library.module = library.module || {};
 	}
 	
 	*/
-	ns.BaseModule.prototype.getSearchPools = function() {
-		console.log( 'BaseModule.getSearchPools() - implement in module' , self );
-		throw new Error( '^^^ BaseModule.getSearchPools() - implement in module' );
+	ns.BaseModule.prototype.search = function( searchStr ) {
+		console.log( 'BaseModule.search() - implement in module' , self );
+		throw new Error( '^^^ BaseModule.search() - implement in module' );
 	}
 	
 	// Private
@@ -102,6 +102,15 @@ library.module = library.module || {};
 				data : data,
 			});
 		}
+		
+		self.requests = new library.component.RequestNode(
+			self.conn,
+			reqSink
+		);
+		
+		console.log( 'requests', self.requests );
+		
+		function reqSink() { console.log( 'reqSink', arguments ); }
 		
 		self.conn.on( 'initstate', initState );
 		self.conn.on( 'connection', connection );
@@ -527,16 +536,16 @@ library.module = library.module || {};
 		});
 	}
 	
-	ns.Presence.prototype.getSearchPools = function() {
+	ns.Presence.prototype.search = function( searchStr ) {
 		const self = this;
-		let pools = [
+		let results = [
 			new Promise( getRooms ),
 			new Promise( getContacts ),
 		];
 		
 		return {
-			source : 'Presence',
-			pools  : pools,
+			source  : 'Presence',
+			results : results,
 		};
 		
 		function getRooms( resolve, reject ) {
@@ -544,7 +553,7 @@ library.module = library.module || {};
 				.map( build );
 			
 			resolve({
-				type    : 'rooms',
+				type    : 'groups',
 				actions : [
 					'open-chat',
 					'live-audio',
@@ -586,6 +595,7 @@ library.module = library.module || {};
 					type       : 'contact',
 					isRelation : true,
 					name       : con.identity.name,
+					avatar     : con.identity.avatar,
 				};
 				return item;
 			}
@@ -1335,7 +1345,7 @@ library.module = library.module || {};
 		self.type = 'treeroot';
 		self.subscribeView = null;
 		
-		self.requests = {};
+		self.requestss = {};
 		
 		self.init();
 	}
@@ -1349,16 +1359,16 @@ library.module = library.module || {};
 		const self = this;
 	}
 	
-	ns.Treeroot.prototype.getSearchPools = function() {
+	ns.Treeroot.prototype.search = function( searchStr ) {
 		const self = this;
-		let pools = [
+		let results = [
 			new Promise( getContacts ),
 			new Promise( getAvailable ),
 		];
 		
 		return {
-			source : 'Treeroot',
-			pools  : pools,
+			source   : 'Treeroot',
+			results  : results,
 		};
 		
 		function getContacts( resolve, reject ) {
@@ -1390,12 +1400,16 @@ library.module = library.module || {};
 				return;
 			}
 			
-			self.getUserList()
+			self.searchAvailable( searchStr )
 				.then( usersBack )
 				.catch( usersError );
 			
-			function usersError( err ) { reject( [] ); }
+			function usersError( err ) {
+				console.log( 'usersError', err );
+				reject( [] );
+			}
 			function usersBack( userList ) {
+				console.log( 'usersBack', userList );
 				let items = userList.map( user => {
 					return build( user, false );
 				});
@@ -1411,17 +1425,16 @@ library.module = library.module || {};
 		}
 		
 		function build( user, isRelation ) {
-			user.identity = user.identity || {};
-			user.data = user.data || {};
+			const id = user.identity || user;
 			let item = {
-				id         : user.clientId || user.id,
+				id         : id.clientId || id.id,
 				type       : 'contact',
 				isRelation : isRelation,
-				name       : user.identity.name || user.name,
-				email      : user.identity.email || user.email,
-				avatar     : user.identity.avatar || '',
-				alias      : user.data.Username || user.username,
-				isOnline   : user.isOnline || false,
+				name       : id.name,
+				email      : id.email,
+				avatar     : id.avatar || '',
+				alias      : null,
+				isOnline   : id.isOnline || false,
 			};
 			return item;
 		}
@@ -1475,15 +1488,13 @@ library.module = library.module || {};
 		self.conn.on( 'contact', contactEvent );
 		self.conn.on( 'subscription', subscription );
 		self.conn.on( 'register', registerResponse );
-		self.conn.on( 'userlist', userList );
 		self.conn.on( 'keyexchange', keyExchangeHandler );
 		self.conn.on( 'pass-ask-auth', passAskAuth );
-		
+
 		function updateAccount( e ) { self.updateAccount( e ); }
 		function contactEvent( e ) { self.contactEvent( e ); }
 		function subscription( e ) { self.subscription( e ); }
 		function registerResponse( e ) { self.registerResponse( e ); }
-		function userList( e ) { self.handleUserList( e ); }
 		function keyExchangeHandler( e ) { self.keyExchangeHandler( e ); }
 		function passAskAuth( e ) { self.passAskAuth( e ); }
 		
@@ -2214,39 +2225,52 @@ library.module = library.module || {};
 	
 	ns.Treeroot.prototype.handleUserList = function( event ) {
 		const self = this;
-		let callback = self.requests[ event.reqId ];
+		let callback = self.requestss[ event.reqId ];
 		if ( !callback )
 			return;
 		
 		callback( event.list );
-		delete self.requests[ event.reqId ];
+		delete self.requestss[ event.reqId ];
 	}
 	
 	ns.Treeroot.prototype.getUserList = function() {
 		const self = this;
+		console.log( 'getUserList' );
 		return new Promise(( resolve, reject ) => {
 			if ( self.userList ) {
 				resolve( self.userList );
 				return;
 			}
 			
-			let reqId = friendUP.tool.uid( 'ulist' );
-			let getUsers = {
-				type : 'userlist',
-				data : reqId,
-			};
-			self.send( getUsers );
-			self.requests[ reqId ] = listBack;
-			function listBack( userList ) {
+			self.requests.request( 'user-list', null )
+				.then( reqBack )
+				.catch( reqFail );
+			
+			function reqBack( userList ) {
+				console.log( 'reqBack', userList );
 				self.userList = userList;
 				self.userListCacheTimeout = window.setTimeout( clearUserListCache, 1000 * 10 );
 				resolve( userList );
+			}
+			
+			function reqFail( error ) {
+				console.log( 'reqFail', error );
+				reject( error );
 			}
 			
 			function clearUserListCache() {
 				self.userListCacheTimeout = null;
 				delete self.userList;
 			}
+		});
+	}
+	
+	ns.Treeroot.prototype.searchAvailable = function( searchStr ) {
+		const self = this;
+		return new Promise(( resolve, reject ) => {
+			self.requests.request( 'search-available', searchStr )
+				.then( resolve )
+				.catch( reject );
 		});
 	}
 	
@@ -2265,7 +2289,7 @@ library.module = library.module || {};
 					},
 				},
 			});
-			self.requests[ reqId ] = subConfirm;
+			self.requestss[ reqId ] = subConfirm;
 			function subConfirm( success ) {
 				if ( success )
 					resolve();
@@ -2292,11 +2316,11 @@ library.module = library.module || {};
 		if ( !reqId )
 			return;
 		
-		const callback = self.requests[ reqId ];
+		const callback = self.requestss[ reqId ];
 		if ( !callback )
 			return;
 		
-		delete self.requests[ reqId ];
+		delete self.requestss[ reqId ];
 		callback( event.response );
 	}
 	
@@ -2532,15 +2556,15 @@ library.module = library.module || {};
 		console.log( 'IRC.reconnect - NYI' );
 	}
 	
-	ns.IRC.prototype.getSearchPools = function() {
+	ns.IRC.prototype.search = function( searchStr ) {
 		const self = this;
-		let pools = [
+		let results = [
 			new Promise( getThingies ),
 		];
 		
 		return {
-			source : 'IRC',
-			pools  : pools,
+			source  : 'IRC',
+			results : results,
 		};
 		
 		function getThingies( resolve, reject ) {
