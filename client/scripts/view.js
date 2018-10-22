@@ -81,6 +81,7 @@ library.view = library.view || {};
 		function toView( e ) {
 			// lets not
 		}
+		
 		function toChat( link ) {
 			const chat = {
 				type : 'msg',
@@ -94,7 +95,9 @@ library.view = library.view || {};
 		const filePath = 'html/presence.html';
 		let roomTitle = self.state.roomName;
 		if ( !self.state.isPrivate )
-			roomTitle = '#' + roomTitle;
+			roomTitle = '#' + roomTitle + ' - ' + Application.i18n( 'i18n_group_chat' );
+		else
+			roomTitle = roomTitle + ' - ' + Application.i18n( 'i18n_private_chat' );
 		
 		const windowConf = {
 			title  : roomTitle,

@@ -342,3 +342,5 @@ i18n_keep_link : Keep link
 i18n_room_name : Room name
 i18n_today : Today
 i18n_yesterday : Yesterday
+i18n_group_chat : Group chat
+i18n_private_chat : Private chat
