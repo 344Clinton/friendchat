@@ -104,8 +104,11 @@ id,
 roomName,
 -->
 <script id="group-title-tmpl" type="text/html">
-<div id="<%= id %>">
-	<div class="title-name">
+<div id="<%= id %>" class="group row start">
+	<div class="fortify">
+		#
+	</div>
+	<div class="title-name expand">
 		<%= roomName %>
 	</div>
 </div>
@@ -117,10 +120,10 @@ avatarCssKlass,
 contactName,
 -->
 <script id="contact-title-tmpl" type="text/html">
-<div id="<%= id %>">
-	<div class="title-avatar">
+<div id="<%= id %>" class="group row start <%= avatarCssKlass %>">
+	<div class="avatar fortify">
 	</div>
-	<div class="title-name">
+	<div class="title-name expand">
 		<%= contactName %>
 	</div>
 </div>

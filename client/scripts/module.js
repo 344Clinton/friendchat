@@ -1413,6 +1413,7 @@ library.module = library.module || {};
 				console.log( 'usersError', err );
 				reject( [] );
 			}
+			
 			function usersBack( userList ) {
 				console.log( 'usersBack', userList );
 				let items = userList.map( user => {

@@ -2110,7 +2110,6 @@ library.component = library.component || {};
 	ns.Search.prototype.init = function( parentConn, inputContainerId, resultsContainerId ) {
 		const self = this;
 		self.setActions();
-		self.filter = new library.component.Filter();
 		self.conn = new library.component.EventNode( 'search', parentConn, eventSink );
 		function eventSink( type, data ) {
 			console.log( 'Main.Search event sink - no handler for event', {
@@ -2315,7 +2314,6 @@ library.component = library.component || {};
 		const poolEl = document.getElementById( source.uuid );
 		const poolContent = poolEl.querySelector( '.content' );
 		items.forEach( add );
-		//refreshResults( source );
 		
 		function add( item ) {
 			let uuid = friendUP.tool.uid();
@@ -2363,20 +2361,6 @@ library.component = library.component || {};
 				
 				return ' - ' + View.i18n( type );
 			}
-		}
-		
-		function refreshResults( source ) {
-			const pool = source.pool;
-			if ( !pool.length ) {
-				self.togglePool( source.uuid, false );
-				return;
-			}
-			
-			const hide = self.filter.inverseFilter( self.searchStr, pool );
-			if ( hide.length === pool.length )
-				self.togglePool( pool.uuid, false );
-			
-			self.toggleItems( hide, false );
 		}
 	}
 	
@@ -2539,45 +2523,6 @@ library.component = library.component || {};
 		};
 		
 		self.sendAction( action );
-	}
-	
-	ns.Search.prototype.refreshResults = function() {
-		const self = this;
-		if ( !self.pools )
-			return;
-		
-		self.pools.forEach( sourceId => {
-			let source = self.sources[ sourceId ];
-			let pool = source.pool;
-			let show = self.filter.filter( self.searchStr, pool );
-			let hide = self.filter.inverseFilter( self.searchStr, pool );
-			self.togglePool( source.uuid, !!show.length )
-			self.toggleItems( show, true );
-			self.toggleItems( hide, false );
-		});
-	}
-	
-	ns.Search.prototype.toggleItems = function( list, show ) {
-		const self = this;
-		if ( !list.length )
-			return;
-		
-		list.forEach( item => {
-			let el = document.getElementById( item.uuid );
-			if ( !el )
-				return;
-			
-			el.classList.toggle( 'hidden', !show );
-		});
-	}
-	
-	ns.Search.prototype.togglePool = function( poolId, show ) {
-		const self = this;
-		const poolEl = document.getElementById( poolId );
-		if ( !poolEl )
-			return;
-		
-		poolEl.classList.toggle( 'hidden', !show );
 	}
 	
 	ns.Search.prototype.getItemMenuActions = function( item ) {

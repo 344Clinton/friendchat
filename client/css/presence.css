@@ -1,7 +1,18 @@
 #head {
 	height: unset;
+	padding : 0.3em 0.5em;
 }
 
+#room-title {
+	font-size: 120%;
+	font-weight: bold;
+}
+
+#room-title .avatar {
+	width        : 2em;
+	height       : 2em;
+	margin-right : 0.4em;
+}
 
 #foot {
 	height: unset;
@@ -29,7 +40,7 @@
 .log-fetch {
 	padding : 0em 1em;
 	padding-top : 1em;
-	height: 3em
+	height : 3em;
 }
 
 .log-fetch-msg,
@@ -61,6 +72,9 @@
 .msg-item .avatar {
 	width  : 2.4em;
 	height : 2.4em;
+}
+
+.avatar {
 	border-radius : 100%;
 	background-position: center;
 	background-size: cover;

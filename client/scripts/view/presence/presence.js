@@ -85,6 +85,8 @@ library.view = library.view || {};
 	
 	ns.Presence.prototype.bindUI = function() {
 		const self = this;
+		self.titleContainer = document.getElementById( 'room-title' );
+		
 		// buttons?
 		self.goVideoBtn = document.getElementById( 'upgrade-to-video' );
 		self.goAudioBtn = document.getElementById( 'upgrade-to-audio' );
@@ -196,9 +198,9 @@ library.view = library.view || {};
 	ns.Presence.prototype.bindConn = function() {
 		const self = this;
 		self.conn.on( 'initialize', initialize );
-		self.conn.on( 'state', state );
-		self.conn.on( 'chat', chat );
-		self.conn.on( 'live', live );
+		self.conn.on( 'state'     , state );
+		self.conn.on( 'chat'      , chat );
+		self.conn.on( 'live'      , live );
 		self.conn.on( 'persistent', persistent );
 		
 		function initialize( e ) { self.handleInitialize( e ); }
@@ -210,6 +212,7 @@ library.view = library.view || {};
 	
 	ns.Presence.prototype.handleInitialize = function( conf ) {
 		const self = this;
+		console.log( 'view.Presence.handleInitialize', conf );
 		friend.template.addFragments( conf.commonFragments );
 		const state = conf.state;
 		
@@ -219,6 +222,7 @@ library.view = library.view || {};
 		self.name       = state.roomName;
 		self.ownerId    = state.ownerId;
 		self.userId     = state.userId;
+		self.contactId  = state.contactId;
 
 		self.users = new library.component.UserCtrl(
 			self.conn,
@@ -358,24 +362,63 @@ library.view = library.view || {};
 	
 	ns.Presence.prototype.setPrivateUI = function() {
 		const self = this;
-		self.toggleUserList( false );
+		self.usersEl.classList.toggle( 'hidden', true );
 		self.toggleUserListBtn( false );
 		self.setContactTitle();
 	}
 	
 	ns.Presence.prototype.setGroupUI = function() {
 		const self = this;
-		self.toggleUserList( true );
+		self.usersEl.classList.toggle( 'hidden', false );
 		self.toggleUserListBtn( true );
-		self.setRoomTitle();
+		self.setGroupTitle();
 	}
 	
 	ns.Presence.prototype.setContactTitle = function() {
 		const self = this;
+		if ( self.titleId )
+			self.clearTitle();
+		
+		console.log( 'setContactTitle', self );
+		self.titleId = friendUP.tool.uid( 'title' );
+		const user = self.users.get( self.contactId );
+		console.log( 'setContactTitle - user', user );
+		const conf = {
+			id             : self.titleId,
+			avatarCssKlass : self.users.getAvatarKlass( self.contactId ),
+			contactName    : user.name,
+		}
+		console.log( 'setContactTile - conf', conf );
+		self.titleEl = friend.template.getElement( 'contact-title-tmpl', conf );
+		self.titleContainer.appendChild( self.titleEl );
 	}
 	
-	ns.Presence.prototype.setRoomTitle = function() {
+	ns.Presence.prototype.setGroupTitle = function() {
 		const self = this;
+		if ( self.titleId )
+			self.clearTitle();
+		
+		self.titleId = friendUP.tool.uid( 'title' );
+		const conf = {
+			id       : self.titleId,
+			roomName : self.name,
+		};
+		self.titleEl = friend.template.getElement( 'group-title-tmpl', conf );
+		self.titleContainer.appendChild( self.titleEl );
+	}
+	
+	ns.Presence.prototype.clearTitle = function() {
+		const self = this;
+		if ( !self.titleId )
+			return;
+		
+		const el = document.getElementById( self.titleId );
+		self.titleId = null;
+		self.titleEl = null;
+		if ( !el )
+			return;
+		
+		el.parentNode.removeChild( el );
 	}
 	
 	ns.Presence.prototype.handleState = function( state ) {
