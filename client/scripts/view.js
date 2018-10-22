@@ -92,8 +92,12 @@ library.view = library.view || {};
 		}
 		
 		const filePath = 'html/presence.html';
+		let roomTitle = self.state.roomName;
+		if ( !self.state.isPrivate )
+			roomTitle = '#' + roomTitle;
+		
 		const windowConf = {
-			title  : '#' + self.state.roomName,
+			title  : roomTitle,
 			width  : 700,
 			height : 450,
 		};
