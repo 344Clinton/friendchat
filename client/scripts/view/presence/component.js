@@ -475,6 +475,11 @@ library.view = library.view || {};
         }
     }
     
+    ns.UserCtrl.prototype.getAvatarKlass = function( userId ) {
+        const self = this;
+        return self.getUserCssKlass( userId );
+    }
+    
     ns.UserCtrl.prototype.close = function() {
         const self = this;
         self.releaseConn();
@@ -834,17 +839,22 @@ library.view = library.view || {};
         group.remove( userId );
     }
     
-    ns.UserCtrl.prototype.addUserCss = function( clientId, avatar ) {
+    ns.UserCtrl.prototype.addUserCss = function( userId, avatar ) {
         const self = this;
         const container = document.getElementById( 'user-css' );
-        const klassName = clientId + '-klass';
+        const klassName = self.getUserCssKlass( userId );
         const cssConf = {
-            clientId  : clientId,
+            clientId  : userId,
             klassName : klassName,
             avatar    : avatar,
         };
         const cssEl = friend.template.getElement( 'user-css-tmpl', cssConf );
         container.appendChild( cssEl );
+    }
+    
+    ns.UserCtrl.prototype.getUserCssKlass = function( userId ) {
+        const self = this;
+        return userId + '-klass';
     }
     
 })( library.component );

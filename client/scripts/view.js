@@ -93,7 +93,7 @@ library.view = library.view || {};
 		
 		const filePath = 'html/presence.html';
 		const windowConf = {
-			title  : self.state.roomName,
+			title  : '#' + self.state.roomName,
 			width  : 700,
 			height : 450,
 		};

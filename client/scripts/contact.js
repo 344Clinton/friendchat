@@ -1657,6 +1657,7 @@ library.contact = library.contact || {};
 		
 		ns.Contact.call( self, conf );
 		
+		self.contactId = null;
 		self.isPrivate = true;
 		self.settings = null;
 		self.identities = {};
@@ -1699,6 +1700,7 @@ library.contact = library.contact || {};
 		
 		self.identities[ self.user.clientId ] = self.user;
 		self.identities[ self.identity.clientId ] = self.identity;
+		self.contactId = self.identity.clientId;
 		
 		self.conn.on( 'open', open );
 		self.conn.on( 'initialize', init );
@@ -1824,6 +1826,7 @@ library.contact = library.contact || {};
 			peers       : self.peers,
 			ownerId     : self.ownerId,
 			userId      : self.userId,
+			contactId   : self.contactId,
 		};
 		console.log( 'openChat - initData', initData );
 		self.chatView = new library.view.PresenceChat(
