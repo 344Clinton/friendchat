@@ -1750,6 +1750,11 @@ library.contact = library.contact || {};
 			return;
 		
 		self.isOnline = isOnline;
+		if ( isOnline )
+			self.onlineList.push( self.clientId );
+		else
+			self.onlineList = [ self.userId ];
+		
 		let online = {
 			type : 'online',
 			data : isOnline,
@@ -1809,7 +1814,6 @@ library.contact = library.contact || {};
 	
 	ns.PresenceContact.prototype.openChatView = function() {
 		const self = this;
-		console.log( 'openChat', self );
 		if ( self.chatView )
 			self.closeChat();
 		

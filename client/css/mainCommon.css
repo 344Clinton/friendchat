@@ -498,49 +498,6 @@ html body .tab-bar .tab-item.Button.IconButton
     background-size     : cover;
 }
 
-.avatar > i {
-    font-size : 160%;
-}
-
-.avatar-status {
-    position : absolute;
-    right    : -0.3em;
-    bottom   : -0.3em;
-}
-
-.led-online-status {
-    height : 1.2em;
-    width : 1.2em;
-    border-radius: 0.7em;
-}
-
-.led-participants-status {
-    height : 1.5em;
-    width : unset;
-    border-radius: 0.8em;
-}
-
-.led-participants-status > div {
-    min-width: 1.1em;
-}
-
-.led-participants-status .display-area {
-    font-size: 0.7em;
-}
-
-.led-unread-status {
-    height: 1.3em;
-    border-radius: 0.65em;
-}
-
-.led-unread-status > div {
-    min-width: 1.3em;
-}
-
-.led-unread-status .display-area {
-    font-size: 0.9em;
-}
-
 .recent-item .recent-info {
     overflow: hidden;
 }

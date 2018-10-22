@@ -199,12 +199,16 @@ library.view = library.view || {};
 		const self = this;
 		self.conn.on( 'initialize', initialize );
 		self.conn.on( 'state'     , state );
+		self.conn.on( 'online'    , online );
+		self.conn.on( 'offline'   , offline );
 		self.conn.on( 'chat'      , chat );
 		self.conn.on( 'live'      , live );
 		self.conn.on( 'persistent', persistent );
 		
 		function initialize( e ) { self.handleInitialize( e ); }
 		function state( e      ) { self.handleState( e ); }
+		function online( e     ) { self.handleOnline( true ); }
+		function offline( e    ) { self.handleOnline( false ); }
 		function chat( e       ) { self.handleChat( e ); }
 		function live( e       ) { self.handleLive( e ); }
 		function persistent( e ) { self.handlePersistent( e ); }
@@ -213,6 +217,7 @@ library.view = library.view || {};
 	ns.Presence.prototype.handleInitialize = function( conf ) {
 		const self = this;
 		console.log( 'view.Presence.handleInitialize', conf );
+		hello.template = friend.template;
 		friend.template.addFragments( conf.commonFragments );
 		const state = conf.state;
 		
@@ -369,9 +374,15 @@ library.view = library.view || {};
 	
 	ns.Presence.prototype.setGroupUI = function() {
 		const self = this;
+		if ( self.contactStatus ) {
+			self.contactStatus.close();
+			delete self.contactStatus;
+		}
+		
 		self.usersEl.classList.toggle( 'hidden', false );
 		self.toggleUserListBtn( true );
 		self.setGroupTitle();
+		
 	}
 	
 	ns.Presence.prototype.setContactTitle = function() {
@@ -381,16 +392,31 @@ library.view = library.view || {};
 		
 		console.log( 'setContactTitle', self );
 		self.titleId = friendUP.tool.uid( 'title' );
+		const stateId = friendUP.tool.uid( 'cstate' );
 		const user = self.users.get( self.contactId );
 		console.log( 'setContactTitle - user', user );
 		const conf = {
 			id             : self.titleId,
+			statusId       : stateId,
 			avatarCssKlass : self.users.getAvatarKlass( self.contactId ),
 			contactName    : user.name,
-		}
+		};
 		console.log( 'setContactTile - conf', conf );
 		self.titleEl = friend.template.getElement( 'contact-title-tmpl', conf );
 		self.titleContainer.appendChild( self.titleEl );
+		
+		const statusConf = {
+			containerId : stateId,
+			type        : 'led',
+			cssClass    : 'led-online-status PadBorder',
+			statusMap   : {
+				offline   : 'Off',
+				online    : 'On',
+			},
+		};
+		self.contactStatus = new library.component.StatusIndicator( statusConf );
+		const isOnline = self.users.checkIsOnline( self.contactId );
+		self.handleOnline( isOnline );
 	}
 	
 	ns.Presence.prototype.setGroupTitle = function() {
@@ -442,8 +468,23 @@ library.view = library.view || {};
 		}
 	}
 	
+	ns.Presence.prototype.handleOnline = function( isOnline ) {
+		const self = this;
+		console.log( 'view.Presence.handleOnline', isOnline );
+		if ( !self.isPrivate )
+			return;
+		
+		let state = isOnline ? 'online' : 'offline';
+		self.contactStatus.set( state );
+		if ( isOnline )
+			self.contactStatus.show();
+		else
+			self.contactStatus.hide();
+	}
+	
 	ns.Presence.prototype.handleChat = function( event ) {
 		const self = this;
+		console.log( 'handleChat', event );
 		if ( 'msg' === event.type )
 			self.msgBuilder.handle( event );
 		

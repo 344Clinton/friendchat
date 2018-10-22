@@ -116,12 +116,15 @@ roomName,
 
 <!-- Contact title
 id,
+statusId,
 avatarCssKlass,
 contactName,
 -->
 <script id="contact-title-tmpl" type="text/html">
 <div id="<%= id %>" class="group row start <%= avatarCssKlass %>">
 	<div class="avatar fortify">
+		<div id="<%= statusId %>" class="avatar-status">
+		</div>
 	</div>
 	<div class="title-name expand">
 		<%= contactName %>

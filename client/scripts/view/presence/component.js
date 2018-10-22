@@ -399,6 +399,11 @@ library.view = library.view || {};
         return self.groups[ user.group ] || null;
     }
     
+    ns.UserCtrl.prototype.checkIsOnline = function( userId ) {
+        const self = this;
+        return self.onlines.some( oId => oId === userId );
+    }
+    
     ns.UserCtrl.prototype.setState = function( userId, state, add ) {
         const self = this;
         const user = self.users[ userId ];
