@@ -100,14 +100,12 @@ ns.Presence.prototype.initialize = function( initConf, socketId ) {
 	if ( self.account )
 		self.updateClientAccount( socketId );
 	
-	if( self.contacts && self.contacts.length )
-		self.initClientContacts( socketId );
-	
 	if ( !self.server || !self.server.connected )
 		self.connect();
 	
 	self.client.emitState();
 	self.updateClientRooms( socketId );
+	self.updateClientContacts( socketId );
 }
 
 ns.Presence.prototype.connect = function( conf, socketId ) {
@@ -257,7 +255,7 @@ ns.Presence.prototype.updateClientAccount = function( socketId ) {
 	self.client.send( account, socketId );
 }
 
-ns.Presence.prototype.initClientContacts = function( socketId ) {
+ns.Presence.prototype.updateClientContacts = function( socketId ) {
 	const self = this;
 	const list = {
 		type : 'contact-init',
