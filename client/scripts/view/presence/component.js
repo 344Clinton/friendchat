@@ -69,7 +69,6 @@ library.view = library.view || {};
             return false;
         }
         
-        
         item.group = self.type;
         if ( self.items[ id ])
             return;
@@ -371,6 +370,7 @@ library.view = library.view || {};
         templateManager
     ) {
         const self = this;
+        library.component.EventEmitter.call( self );
         self.conn = conn;
         self.users = {};
         self.userIds = [];
@@ -382,6 +382,8 @@ library.view = library.view || {};
         
         self.init( workgroups, users, guestAvatar );
     }
+    
+    ns.UserCtrl.prototype = Object.create( library.component.EventEmitter.prototype );
     
     // Public
     
@@ -416,6 +418,10 @@ library.view = library.view || {};
         }
         
         user.setState( state, add );
+        self.emit( 'state', {
+            state  : state,
+            userId : userId,
+        });
     }
     
     ns.UserCtrl.prototype.addIdentities = function( idMap ) {
