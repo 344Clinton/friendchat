@@ -116,8 +116,7 @@ var hello = null;
 			self.msgAlert = new api.SoundAlert( 
 				'webclient/apps/FriendChat/res/glass_pop_v3-epic_sound.wav' );
 			
-			self.getUserInfo( userInfoBack )
-			
+			self.getUserInfo( userInfoBack );
 		}
 		
 		function userInfoBack( data ) {
@@ -178,6 +177,7 @@ var hello = null;
 		
 		new api.Module( conf );
 		function modBack( res ) {
+			console.log( 'getUserInfo - res', res );
 			const data = friendUP.tool.objectify( res );
 			callback( data );
 		}
