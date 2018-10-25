@@ -240,12 +240,18 @@ library.view = library.view || {};
 		);
 		
 		self.user = self.users.get( self.userId );
-		
-		// set peers live
 		state.peers.forEach( setLive );
 		function setLive( uid ) {
-			self.users.setState( uid, 'live' );
+			self.users.setState( uid, 'live', true );
 		}
+		
+		self.liveStatus = new library.component.LiveStatus(
+			'live-status-container',
+			self.users,
+			self.userId,
+			friend.template
+		);
+		self.liveStatus.update( state.peers );
 		
 		// get logs when scrolling to top
 		self.logFetcher = new library.component.LogFetcher(

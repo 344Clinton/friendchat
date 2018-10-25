@@ -406,8 +406,9 @@ library.view = library.view || {};
         return self.onlines.some( oId => oId === userId );
     }
     
-    ns.UserCtrl.prototype.setState = function( userId, state, add ) {
+    ns.UserCtrl.prototype.setState = function( userId, state, isSet ) {
         const self = this;
+        console.log( 'UserCtrl.setState', state );
         const user = self.users[ userId ];
         if ( !user ) {
             console.log( 'UserCtrl.setState - no user for uid', {
@@ -417,9 +418,10 @@ library.view = library.view || {};
             return;
         }
         
-        user.setState( state, add );
+        user.setState( state, isSet );
         self.emit( 'state', {
             state  : state,
+            isSet  : isSet,
             userId : userId,
         });
     }
@@ -1706,6 +1708,133 @@ library.view = library.view || {};
             if ( !self.locked )
                 self.toggleFetching ( false );
         }
+    }
+    
+})( library.component );
+
+
+/*
+    LiveStatus
+*/
+
+(function( ns, undefined ) {
+    ns.LiveStatus = function(
+        containerId,
+        users,
+        userId,
+        tmplManager
+    ) {
+        const self = this;
+        console.log( 'LiveStatus', users );
+        self.containerId = containerId;
+        self.users = users;
+        self.userId = userId;
+        self.template = tmplManager;
+        
+        self.peerIdMap = {};
+        self.peerList = [];
+        
+        self.init();
+    }
+    
+    // Public
+    
+    ns.LiveStatus.prototype.update = function( peerList ) {
+        const self = this;
+        console.log( 'update', peerList );
+        peerList.forEach( peerId => self.addPeer( peerId ));
+    }
+    
+    ns.LiveStatus.prototype.close = function() {
+        const self = this;
+        self.users.off( self.stateEventId );
+        
+        self.el.parentNode.removeChild( self.el );
+        delete self.el;
+        delete self.peers;
+        delete self.peerList;
+        delete self.peerIdMap;
+        
+        delete self.users;
+        delete self.userId;
+        delete self.template;
+        delete self.containerId;
+    }
+    
+    // Private
+    
+    ns.LiveStatus.prototype.init = function() {
+        const self = this;
+        console.log( 'LiveStatus', self );
+        
+        // build
+        self.peers = friendUP.tool.uid( 'peers' );
+        const elConf = {
+            peersId : self.peers,
+        };
+        self.el = self.template.getElement( 'live-status-tmpl', elConf );
+        const container = document.getElementById( self.containerId );
+        container.appendChild( self.el );
+        self.peers = document.getElementById( self.peers );
+        console.log( 'peers', self.peers );
+        
+        // listen
+        self.stateEventId = self.users.on( 'state', live );
+        function live( e ) { self.handleLive( e ); }
+    }
+    
+    ns.LiveStatus.prototype.handleLive = function( event ) {
+        const self = this;
+        if ( 'live' !== event.state )
+            return;
+        
+        console.log( 'handleLive', event );
+        if ( event.isSet )
+            self.addPeer( event.userId );
+        else
+            self.removePeer( event.userId );
+    }
+    
+    ns.LiveStatus.prototype.addPeer = function( userId ) {
+        const self = this;
+        console.log( 'addPeer', {
+            uid : userId,
+            list : self.peerList,
+        });
+        if ( self.peerList.some( pId => pId === userId ))
+            return;
+        
+        const peerId = friendUP.tool.uid( 'peer' );
+        const avatarKlass = self.users.getAvatarKlass( userId );
+        const peer = {
+            id          : peerId,
+            avatarKlass : avatarKlass,
+        };
+        const peerEl = self.template.getElement( 'live-status-peer-tmpl', peer );
+        self.peerIdMap[ userId ] = peerId;
+        self.peers.appendChild( peerEl );
+        self.peerList.push( userId );
+        self.updateVisibility();
+    }
+    
+    ns.LiveStatus.prototype.removePeer = function( userId ) {
+        const self = this;
+        console.log( 'removePeer', userId );
+        let peerId = self.peerIdMap[ userId ];
+        if ( !peerId )
+            return;
+        
+        delete self.peerIdMap[ userId ];
+        const el = document.getElementById( peerId );
+        el.parentNode.removeChild( el );
+        self.peerList = self.peerList.filter( pId => pId !== userId );
+        self.updateVisibility();
+    }
+    
+    ns.LiveStatus.prototype.updateVisibility = function() {
+        const self = this;
+        const show = !!self.peerList.length ? true : false;
+        self.el.classList.toggle( 'hidden', !show );
     }
     
 })( library.component );
