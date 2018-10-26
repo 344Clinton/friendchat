@@ -210,7 +210,11 @@ var friend = window.friend || {}; // already instanced stuff
 	ns.View.prototype.activate = function() {
 		var self = this;
 		var activate = {
-			method : 'activate',
+			method : 'setFlag',
+			data : {
+				flag : 'minimized',
+				value : false,
+			},
 		};
 		self._send( activate );
 	}
@@ -621,7 +625,7 @@ var friend = window.friend || {}; // already instanced stuff
 			return;
 		}
 		
-		console.log( 'app.receiveEvent', msg );
+		//console.log( 'app.receiveEvent', msg );
 		msg.origin = e.origin;
 		
 		var handler = self.commandMap[ msg.command ];

@@ -97,10 +97,10 @@ library.view = library.view || {};
 		let viewWidth = 700;
 		if ( !self.state.isPrivate ) {
 			roomTitle = '#' + roomTitle + ' - ' + Application.i18n( 'i18n_group_chat' );
+		} else {
+			roomTitle = roomTitle + ' - ' + Application.i18n( 'i18n_private_chat' );
 			viewWidth = 500;
 		}
-		else
-			roomTitle = roomTitle + ' - ' + Application.i18n( 'i18n_private_chat' );
 		
 		const windowConf = {
 			title  : roomTitle,

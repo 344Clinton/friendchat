@@ -515,10 +515,6 @@ ns.Treeroot.prototype.sendUniqueId = function( socketId ) {
 ns.Treeroot.prototype.handleClientPublicKey = function( data, socketId ) {
 	const self = this;
 	self.cryptOngoing = socketId;
-	self.log( 'handleClientPublicKey', {
-		dbPass : self.tryDBPass,
-		hased  : data.hashedPass,
-	});
 	if ( data.hashedPass !== self.cryptoSetupState.dbPass )
 		self.cryptoSetupState.userPass = data.hashedPass;
 	
@@ -628,7 +624,7 @@ ns.Treeroot.prototype.sendSignedPass = function( data, socketId ) {
 
 ns.Treeroot.prototype.keyExchangeComplete = function( sessionId, socketId ) {
 	var self = this;
-	self.log( 'keyExComplete', self.cryptoSetupState, 4 );
+	//self.log( 'keyExComplete', self.cryptoSetupState, 4 );
 	self.cryptoSetupState = null;
 	if ( self.tryUserPass )
 		self.updatePassword( self.tryUserPass, passBack );
@@ -686,7 +682,6 @@ ns.Treeroot.prototype.keyExchangeFailed = function() {
 
 ns.Treeroot.prototype.askRetry = function() {
 	const self = this;
-	self.log( 'askRetry' );
 	self.setConnectionError();
 	const event = {
 		type : 'password-old-failed',
@@ -697,7 +692,6 @@ ns.Treeroot.prototype.askRetry = function() {
 
 ns.Treeroot.prototype.retryDBPassword = function( response, socketId ) {
 	const self = this;
-	self.log( 'retryDBPassword', response );
 	if ( !response )
 		return;
 	

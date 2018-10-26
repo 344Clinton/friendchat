@@ -67,7 +67,6 @@ library.contact = library.contact || {};
 	// Private
 	ns.Contact.prototype.contactInit = function( parentConn, parentView ) {
 		const self = this;
-		console.log( 'contactInit', self.clientId );
 		if ( parentConn )
 			self.setupConn( parentConn );
 		
@@ -152,7 +151,6 @@ library.contact = library.contact || {};
 	
 	ns.Contact.prototype.whenChatClosed = function( msg ) {
 		var self = this;
-		console.log( 'whenChatClosed', msg );
 		if ( hello.account.settings.popupChat === true ) {
 			api.Say( 'Message received' );
 			self.startChat(); // contact must implement
@@ -164,16 +162,29 @@ library.contact = library.contact || {};
 		
 		hello.playMsgAlert();
 		self.messageWaiting( true, msg.message, msg.from, msg.time );
+		const notie = {
+			title : self.identity.name,
+			text  : msg.message,
+			callback : nClose,
+			clickCallback : nClick
+		};
+		hello.app.notify( notie );
+		
+		function nClose( res ) {
+			console.log( 'notify - no action', res );
+		}
+		function nClick( res ) {
+			console.log( 'notifu - click', res );
+			self.startChat();
+		}
 	}
 	
 	ns.Contact.prototype.whenChatOpen = function( msg ) {
 		var self = this;
-		console.log( 'whenChatOpen', msg );
 		if ( !msg.from )
 			return;
 		
 		hello.playMsgAlert();
-		console.log( 'chatView.view', self.chatView.view );
 		if ( !self.chatView.view.isMinimized )
 			return;
 		
@@ -183,7 +194,6 @@ library.contact = library.contact || {};
 			callback : nClose,
 			clickCallback : nClick
 		};
-		console.log( 'sendNotify', notie );
 		hello.app.notify( notie );
 		
 		function nClose( res ) {
@@ -261,7 +271,6 @@ library.contact = library.contact || {};
 	
 	ns.Contact.prototype.handleLog = function( log ) {
 		var self = this;
-		console.log( 'handleLog', log );
 		if ( !log ) {
 			nullMessage();
 			return;
@@ -506,7 +515,6 @@ library.contact = library.contact || {};
 	
 	ns.Contact.prototype.send = function( event ) {
 		var self = this;
-		console.log( 'send', event );
 		self.conn.send( event );
 	}
 	
@@ -1892,6 +1900,12 @@ library.contact = library.contact || {};
 		};
 		
 		self.onChatMessage( msg );
+	}
+	
+	ns.PresenceContact.prototype.startChat = function() {
+		const self = this;
+		console.log( 'startChat' );
+		self.openChat();
 	}
 	
 })( library.contact );
