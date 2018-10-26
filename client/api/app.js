@@ -93,6 +93,7 @@ var friend = window.friend || {}; // already instanced stuff
 		
 		self.on( 'loaded', loaded );
 		self.on( 'ready', ready );
+		self.on( 'minimized', mini );
 		
 		function viewCreate( msg ) {
 			if ( msg.data.toUpperCase() !== 'OK' ) {
@@ -121,6 +122,7 @@ var friend = window.friend || {}; // already instanced stuff
 		}
 		function loaded( e ) { self.handleLoaded( e ); }
 		function ready( e ) { self.handleReady( e ); }
+		function mini( e ) { self.handleMinimized( e ); }
 	}
 	
 	ns.View.prototype.setContentUrl = function( htmlPath ) {
@@ -230,14 +232,14 @@ var friend = window.friend || {}; // already instanced stuff
 		var cid = self.app.setCallback( callback );
 		
 		var filedialog = {
-			type : 'system',
-			command : 'filedialog',
-			method : 'open',
+			type       : 'system',
+			command    : 'filedialog',
+			method     : 'open',
 			dialogType : conf.dialogType || 'open',
-			path : conf.path,
-			filename : conf.filename,
-			title : conf.title,
-			viewId : self.id,
+			path       : conf.path,
+			filename   : conf.filename,
+			title      : conf.title,
+			viewId     : self.id,
 			callbackId : cid,
 		};
 		
@@ -265,6 +267,12 @@ var friend = window.friend || {}; // already instanced stuff
 			self.onready( e || true );
 			return;
 		}
+	}
+	
+	ns.View.prototype.handleMinimized = function( isMinimized ) {
+		const self = this;
+		console.log( 'handleMinimized', isMinimized );
+		self.isMinimized = isMinimized;
 	}
 	
 	ns.View.prototype.doClose = function() {
@@ -613,6 +621,7 @@ var friend = window.friend || {}; // already instanced stuff
 			return;
 		}
 		
+		console.log( 'app.receiveEvent', msg );
 		msg.origin = e.origin;
 		
 		var handler = self.commandMap[ msg.command ];

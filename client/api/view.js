@@ -101,6 +101,7 @@ var friend = window.friend || {};
 		} else
 			msg = e.data;
 		
+		console.log( 'View.receiveEvent', msg );
 		//var msg = friendUP.tool.objectify( e.data );
 		if ( !msg ) {
 			console.log( 'view.receiveEvent - no msg for event', e );
@@ -664,6 +665,11 @@ var friend = window.friend || {};
 		});
 		
 		self.isActive = false;
+		const minimized = {
+			type : 'minimized',
+			data : true,
+		};
+		self.send( minimized );
 		document.body.classList.toggle( 'activated', false );
 	}
 	
