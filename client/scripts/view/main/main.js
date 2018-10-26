@@ -2084,6 +2084,7 @@ library.view = library.view || {};
 		console.log( 'view.handleOnline', isOnline );
 		isOnline = !!isOnline;
 		self.isOnline = isOnline;
+		self.emit( 'online', isOnline );
 		if ( isOnline ) {
 			self.onlineStatus.set( 'online' );
 			self.onlineStatus.show();
