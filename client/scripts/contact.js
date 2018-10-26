@@ -152,6 +152,7 @@ library.contact = library.contact || {};
 	
 	ns.Contact.prototype.whenChatClosed = function( msg ) {
 		var self = this;
+		console.log( 'whenChatClosed', msg );
 		if ( hello.account.settings.popupChat === true ) {
 			api.Say( 'Message received' );
 			self.startChat(); // contact must implement
@@ -167,23 +168,30 @@ library.contact = library.contact || {};
 	
 	ns.Contact.prototype.whenChatOpen = function( msg ) {
 		var self = this;
+		console.log( 'whenChatOpen', msg );
 		if ( !msg.from )
 			return;
 		
 		hello.playMsgAlert();
+		console.log( 'chatView.view', self.chatView.view );
 		if ( !self.chatView.view.isMinimized )
 			return;
 		
-		hello.app.notify({
+		const notie = {
 			title : self.identity.name,
 			text  : msg.message,
 			callback : nClose,
 			clickCallback : nClick
-		});
+		};
+		console.log( 'sendNotify', notie );
+		hello.app.notify( notie );
 		
-		function nClose( res ) {}
+		function nClose( res ) {
+			console.log( 'notify - no action', res );
+		}
 		function nClick( res ) {
-			self.chatView.view.setFlag( 'minimized', false );
+			console.log( 'notifu - click', res );
+			self.chatView.view.activate();
 		}
 	}
 	
@@ -1872,6 +1880,18 @@ library.contact = library.contact || {};
 		};
 		
 		self.joinLive( conf );
+	}
+	
+	ns.PresenceContact.prototype.onMessage = function( event ) {
+		const self = this;
+		const from = self.resolveMessageName( event );
+		const msg = {
+			from    : from,
+			message : event.message,
+			time    : event.time,
+		};
+		
+		self.onChatMessage( msg );
 	}
 	
 })( library.contact );

@@ -94,14 +94,17 @@ library.view = library.view || {};
 		
 		const filePath = 'html/presence.html';
 		let roomTitle = self.state.roomName;
-		if ( !self.state.isPrivate )
+		let viewWidth = 700;
+		if ( !self.state.isPrivate ) {
 			roomTitle = '#' + roomTitle + ' - ' + Application.i18n( 'i18n_group_chat' );
+			viewWidth = 500;
+		}
 		else
 			roomTitle = roomTitle + ' - ' + Application.i18n( 'i18n_private_chat' );
 		
 		const windowConf = {
 			title  : roomTitle,
-			width  : 700,
+			width  : viewWidth,
 			height : 450,
 		};
 		
