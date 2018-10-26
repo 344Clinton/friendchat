@@ -395,7 +395,6 @@ ns.Presence.prototype.tryLogin = function() {
 ns.Presence.prototype.handleInitialize = function( state ) {
 	var self = this;
 	// account
-	log( 'handleInitialize', state );
 	let accId = state.account.clientId;
 	if ( !self.account )
 		bindServerConn( accId )
@@ -542,7 +541,6 @@ ns.Presence.prototype.handleRoomClosed = function( roomId ) {
 
 ns.Presence.prototype.initializeContacts = function( contacts ) {
 	const self = this;
-	log( 'initializeContacts', contacts );
 	let ids = Object.keys( contacts );
 	ids.forEach( id => {
 		let contact = contacts[ id ];
@@ -552,7 +550,6 @@ ns.Presence.prototype.initializeContacts = function( contacts ) {
 
 ns.Presence.prototype.handleContactList = function( list ) {
 	const self = this;
-	log( 'handleContactList', list );
 	list.forEach( add );
 	function add( con ) {
 		self.handleContactAdd( con );
@@ -561,7 +558,6 @@ ns.Presence.prototype.handleContactList = function( list ) {
 
 ns.Presence.prototype.handleContactAdd = function( contact ) {
 	const self = this;
-	log( 'handleContactAdd', contact );
 	const cId = contact.clientId;
 	if ( self.contacts[ cId ]) {
 		log( 'already added', cId );
@@ -578,7 +574,6 @@ ns.Presence.prototype.handleContactAdd = function( contact ) {
 	self.client.send( cAdd );
 	
 	function toClient( event ) {
-		log( 'toClient', event );
 		let forward = {
 			type : cId,
 			data : event,
@@ -587,7 +582,6 @@ ns.Presence.prototype.handleContactAdd = function( contact ) {
 	}
 	
 	function toServer( event ) {
-		log( 'toServer', event );
 		let forward = {
 			type : cId,
 			data : event,
@@ -598,7 +592,6 @@ ns.Presence.prototype.handleContactAdd = function( contact ) {
 
 ns.Presence.prototype.handleContactRemove = function( clientId ) {
 	const self = this;
-	log( 'handleContactRemove', clientId );
 	delete self.contacts[ clientId ];
 	self.client.release( clientId );
 	self.server.release( clientId );

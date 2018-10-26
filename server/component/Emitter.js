@@ -290,10 +290,6 @@ ns.RequestNode.prototype.request = async function( type, data ) {
 		}
 		
 		function handleResponse( error, response ) {
-			log( 'handleResponse', [
-				error,
-				response,
-			]);
 			delete self._requests[ reqId ];
 			if ( error ) {
 				reject( error );
@@ -309,16 +305,10 @@ ns.RequestNode.prototype.request = async function( type, data ) {
 
 ns.RequestNode.prototype._requestNodeInit = function() {
 	const self = this;
-	log( 'requestNodeInit', self );
 }
 
 ns.RequestNode.prototype._handleEvent = async function( req, sourceId ) {
 	const self = this;
-	log( '_handleEvent', [
-		req,
-		sourceId,
-	], 3 );
-	
 	if ( 'response' === req.type ) {
 		self._handleResponse( req.data, sourceId );
 		return;
@@ -347,12 +337,11 @@ ns.RequestNode.prototype._handleEvent = async function( req, sourceId ) {
 
 ns.RequestNode.prototype._handleResponse = function( res, sourceId ) {
 	const self = this;
-	log( '_handleResponse', res );
+	log( '_handleResponse - NYI', res );
 }
 
 ns.RequestNode.prototype._callListener = async function( req ) {
 	const self = this;
-	log( '_callListener', req );
 	const type = req.type;
 	const listeners = self._emitterEvent2ListenerId[ type ];
 	if ( !listeners )
